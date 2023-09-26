@@ -1,9 +1,9 @@
 /* eslint-disable max-classes-per-file */
 /* eslint-disable no-plusplus */
 
-//this file is not used yet
+import { hsvToRgb, rgbToHsv } from './convert';
 
-export class Color {
+class Color {
   r: number;
 
   g: number;
@@ -110,56 +110,6 @@ export class RGBAImage {
     return this;
   }
 
-  hsvToRgb(h: number, s: number, v: number) {
-    const i = Math.floor(this.h * 6);
-    const f = h * 6 - i;
-    const p = v * (1 - s);
-    const q = v * (1 - f * s);
-    const t = v * (1 - (1 - f) * s);
-    let { r, g, b } = { r: 0, g: 0, b: 0 };
-
-    // eslint-disable-next-line default-case
-    switch (i % 6) {
-      case 0:
-        r = v;
-        g = t;
-        b = p;
-        break;
-      case 1:
-        r = q;
-        g = v;
-        b = p;
-        break;
-      case 2:
-        r = p;
-        g = v;
-        b = t;
-        break;
-      case 3:
-        r = p;
-        g = q;
-        b = v;
-        break;
-      case 4:
-        r = t;
-        g = p;
-        b = v;
-        break;
-      case 5:
-        r = v;
-        g = p;
-        b = q;
-        break;
-    }
-
-    return {
-      r: Math.floor(r * 255),
-      g: Math.floor(g * 255),
-      b: Math.floor(b * 255),
-      a: 0,
-    };
-  }
-
   formatUint8Array(
     f: (
       data: Uint8Array,
@@ -236,6 +186,213 @@ export class RGBAImage {
     const imgData = ctx.createImageData(this.w, this.h);
     imgData.data.set(this.data);
     return imgData;
+  }
+
+  //image adjustment filter
+  exposure(value: number) {
+    const exposureFactor = 2 ** (value / 100);
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      r = Math.min(255, Math.max(0, Math.floor(r * exposureFactor)));
+      g = Math.min(255, Math.max(0, Math.floor(g * exposureFactor)));
+      b = Math.min(255, Math.max(0, Math.floor(b * exposureFactor)));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  brightness(value: number) {
+    const brightnessFactor = Math.floor((value / 100) * 255);
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      r = Math.min(255, Math.max(0, r + brightnessFactor));
+      g = Math.min(255, Math.max(0, g + brightnessFactor));
+      b = Math.min(255, Math.max(0, b + brightnessFactor));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  shadow(value: number) {
+    const normalizedvalue = 2 ** (value / 100);
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      const red = (r / 255) ** (1 / normalizedvalue) * 255;
+      const green = (g / 255) ** (1 / normalizedvalue) * 255;
+      const blue = (b / 255) ** (1 / normalizedvalue) * 255;
+      r = Math.min(255, Math.max(0, red));
+      g = Math.min(255, Math.max(0, green));
+      b = Math.min(255, Math.max(0, blue));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  white(val: number) {
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      const { r, g, b } = this.getPixel(x, y);
+      const hsv = rgbToHsv(r, g, b);
+      hsv.v = Math.min(1, Math.max(0, hsv.v + val / 100));
+      const newColor = hsvToRgb(hsv.h, hsv.s, hsv.v);
+
+      data[idx] = newColor.r;
+      ++idx;
+      data[idx] = newColor.g;
+      ++idx;
+      data[idx] = newColor.b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  black(val: number) {
+    const normalizedvalue = (val + 100) / 100;
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      const red = (r / 255) * normalizedvalue * 255;
+      const green = (g / 255) * normalizedvalue * 255;
+      const blue = (b / 255) * normalizedvalue * 255;
+      r = Math.min(255, Math.max(0, red));
+      g = Math.min(255, Math.max(0, green));
+      b = Math.min(255, Math.max(0, blue));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  // tint
+  tint(value: number) {
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      const { r, b } = this.getPixel(x, y);
+      let { g } = this.getPixel(x, y);
+      const green = g + value
+      g = Math.min(255, Math.max(0, green));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  //temperature
+  temperature(value: number) {
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, b } = this.getPixel(x, y);
+      const { g } = this.getPixel(x, y);
+      let red = r;
+      let blue = b;
+
+      red = r + value;
+
+      blue = b - value;
+      r = Math.min(255, Math.max(0, red));
+      b = Math.min(255, Math.max(0, blue));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  saturationRGB(value: number) {
+    const saturationCorrection = value * -0.01;
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      const max = Math.max(r, g, b);
+      if (r !== max) r += (max - r) * saturationCorrection;
+      if (g !== max) g += (max - g) * saturationCorrection;
+      if (b !== max) b += (max - b) * saturationCorrection;
+
+      r = Math.min(255, Math.max(0, r));
+      g = Math.min(255, Math.max(0, g));
+      b = Math.min(255, Math.max(0, b));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  // Detail
+  contrast(value: number) {
+    const contrastFactor = ((value + 100) / 100) ** 2;
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      // Apply contrast adjustment to each color channel
+      r = (r / 255 - 0.5) * contrastFactor + 0.5;
+      g = (g / 255 - 0.5) * contrastFactor + 0.5;
+      b = (b / 255 - 0.5) * contrastFactor + 0.5;
+
+      // Ensure the color values stay within the 0-255 range
+      r = Math.min(255, Math.max(0, r * 255));
+      g = Math.min(255, Math.max(0, g * 255));
+      b = Math.min(255, Math.max(0, b * 255));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
   }
 
   render(cvs: HTMLCanvasElement) {

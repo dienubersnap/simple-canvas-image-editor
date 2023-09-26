@@ -3,24 +3,28 @@
 ## Installation
 
 ```
-yarn add canvas-image-editor
+yarn add simple-canvas-image-editor
 ```
 
-## How to use
+## How to use in react
 - you can use this with useEffect in react
 ```js
- const [brightness, setBrightness] = useState(0);
-  const [saturation, setSaturation] = useState(0);
-  const [src, setSrc] = useState("https://dev.service.ubersnap.com/gallery/download-one?id=64a395072360f42d8d11a816")
-  
+ const [canvasImage, setCanvasImage] = useState<CanvasImageEdit | null>(null)
   useEffect(() => {
-    const process = new CanvasImageProcessor(src, "#hello",)
-    process.Adjustment(brightness, saturation).render()
-  },[brightness, saturation, src])
+    const loader = new CanvasImageEdit("/wall.jpg")
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement
+
+    loader.ImageLoader(canvas)
+    loader.result?.brightness(10).render(canvas)
+
+    setCanvasImage(loader)
+  }, [])
 ```
 
-- with image component
+- with canvas component
 
 ```js
-    <img id='#hello' src={src} height={280} width={280} alt=''/>
+    <canvas id="canvas" style={{ width: "100%", height: "auto" }} />
 ```
+
+- For full example see in folder example

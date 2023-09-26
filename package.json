@@ -1,6 +1,6 @@
 {
   "name": "simple-canvas-image-editor",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -17,12 +17,15 @@
     "type": "git",
     "url": "https://github.com/achmadAt/canvas-image-editor.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "bugs": {
     "url": "https://github.com/achmadAt/canvas-image-editor/issues"
   },
-
   "devDependencies": {
     "@changesets/cli": "^2.26.2",
+    "@swc/core": "^1.3.89",
     "@types/jest": "^29.5.5",
     "@typescript-eslint/eslint-plugin": "^6.7.2",
     "@typescript-eslint/parser": "^6.7.2",

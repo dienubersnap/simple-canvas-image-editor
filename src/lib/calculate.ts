@@ -302,7 +302,6 @@ class Calculate {
     }
     return (y * width + x) * 4;
   }
-
 }
 
 export default Calculate;
