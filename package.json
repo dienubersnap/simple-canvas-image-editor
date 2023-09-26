@@ -18,7 +18,10 @@
     "url": "https://github.com/achmadAt/canvas-image-editor.git"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "ignore": [
+      "example/"
+    ]
   },
   "bugs": {
     "url": "https://github.com/achmadAt/canvas-image-editor/issues"
