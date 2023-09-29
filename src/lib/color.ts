@@ -1,6 +1,7 @@
 /* eslint-disable max-classes-per-file */
 /* eslint-disable no-plusplus */
 
+import Calculate from './calculate';
 import { hsvToRgb, rgbToHsv } from './convert';
 
 class Color {
@@ -392,6 +393,122 @@ export class RGBAImage {
 
       return data;
     });
+    return dst;
+  }
+
+  sharpness(value: number) {
+    let sharpenKernel: number[][];
+    
+    if (value === 0) {
+      // If the value is 0, no change to the image
+      sharpenKernel = [
+        [0, 0, 0],
+        [0, 1, 0],
+        [0, 0, 0],
+      ];
+    } else if (value > 0) {
+      // If the value is positive, apply sharpening
+      const sharpeningFactor: number = (value / 400);
+      sharpenKernel = [
+        [-1, -1, -1],
+        [-1, 9 + sharpeningFactor, -1],
+        [-1, -1, -1],
+      ];
+    } else {
+      // If the value is negative, apply smoothing (blurring)
+      const smoothingFactor: number = (Math.abs(value) / 400);
+      sharpenKernel = [
+        [0, 1 - smoothingFactor, 0],
+        [0, 0, 0],
+        [0 + smoothingFactor, 0, 0],
+      ];
+    }
+
+    // const uin8toBuffer = Buffer.from(this.data);
+    // let data = Calculate.convolution(this.data, sharpenKernel, this.w, this.h);
+    // return data
+
+    const kRows: number = sharpenKernel.length;
+    const kCols: number = sharpenKernel[0].length;
+    const rowEnd: number = Math.floor(kRows / 2);
+    const colEnd: number = Math.floor(kCols / 2);
+    const rowIni: number = -rowEnd;
+    const colIni: number = -colEnd;
+    const width: number = this.w
+    const height: number = this.h
+  
+    let weight: number;
+    let rSum: number;
+    let gSum: number;
+    let bSum: number;
+    let ri: number;
+    let gi: number;
+    let bi: number;
+    let xi: number;
+    let yi: number;
+    let idxi: number;
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+
+    const pixel: number = (y * width + x) * 4;
+      bSum = 0;
+      gSum = 0;
+      rSum = 0;
+  
+    for (let row: number = rowIni; row <= rowEnd; row++) {
+      for (let col: number = colIni; col <= colEnd; col++) {
+        xi = x + col;
+        yi = y + row;
+        weight = sharpenKernel[row + rowEnd][col + colEnd];
+        idxi = Calculate.getPixelIndex(xi, yi, width, height);
+
+        if (idxi === -1) {
+          bi = 0;
+          gi = 0;
+          ri = 0;
+        } else {
+          ri = this.data[idxi + 0];
+          gi = this.data[idxi + 1];
+          bi = this.data[idxi + 2];
+        }
+
+        rSum += weight * ri;
+        gSum += weight * gi;
+        bSum += weight * bi;
+      }
+    }
+
+      if (rSum < 0) {
+        rSum = 0;
+      }
+
+      if (gSum < 0) {
+        gSum = 0;
+      }
+
+      if (bSum < 0) {
+        bSum = 0;
+      }
+
+      if (rSum > 255) {
+        rSum = 255;
+      }
+
+      if (gSum > 255) {
+        gSum = 255;
+      }
+
+      if (bSum > 255) {
+        bSum = 255;
+      }
+
+      data[pixel + 0] = rSum;
+      data[pixel + 1] = gSum;
+      data[pixel + 2] = bSum;
+
+      return data;
+    });
+
     return dst;
   }
 

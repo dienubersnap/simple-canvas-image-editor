@@ -11,7 +11,7 @@ export default function ImageEditor() {
     const canvas = document.getElementById("canvas") as HTMLCanvasElement
 
     loader.ImageLoader(canvas)
-    loader.result?.brightness(10).render(canvas)
+    loader.result?.render(canvas)
 
     setCanvasImage(loader)
   }, [])

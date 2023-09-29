@@ -27,11 +27,6 @@ export default function AdjustMain(props: AdjustMainProps) {
             // eslint-disable-next-line no-alert
             alert("on proggress")
           }
-
-          if (name === "sharpness") {
-            // eslint-disable-next-line no-alert
-            alert("on proggress")
-          }
         }
       }
     }
@@ -57,6 +52,7 @@ export default function AdjustMain(props: AdjustMainProps) {
             .tint(value.tint)
             .temperature(value.temperature)
             .saturationRGB(value.saturation)
+            .sharpness(value.sharpness)
             .render(canvas)
         }
       }

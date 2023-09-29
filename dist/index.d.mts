@@ -32,6 +32,7 @@ declare class RGBAImage {
     temperature(value: number): RGBAImage;
     saturationRGB(value: number): RGBAImage;
     contrast(value: number): RGBAImage;
+    sharpness(value: number): RGBAImage;
     render(cvs: HTMLCanvasElement): void;
     static fromImage(img: HTMLImageElement, cvs: HTMLCanvasElement): RGBAImage;
 }
