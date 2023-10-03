@@ -45,7 +45,7 @@ export default function AdjustMain(props: AdjustMainProps) {
         if (I) {
           I.brightness(value.brightness)
             .black(value.blacks)
-            .contrast(value.blacks)
+            .contrast(value.contrast)
             .exposure(value.exposure)
             .white(value.whites)
             .shadow(value.shadows)

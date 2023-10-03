@@ -530,15 +530,14 @@ var RGBAImage = class _RGBAImage {
     return dst;
   }
   black(val) {
-    const normalizedvalue = (val + 100) / 100;
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
-      const red = r / 255 * normalizedvalue * 255;
-      const green = g / 255 * normalizedvalue * 255;
-      const blue = b / 255 * normalizedvalue * 255;
-      r = Math.min(255, Math.max(0, red));
-      g = Math.min(255, Math.max(0, green));
-      b = Math.min(255, Math.max(0, blue));
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+      const newLuminance = Math.min(255, Math.max(0, luminance + val));
+      const scalingFactor = newLuminance / luminance;
+      r = Math.min(255, r * scalingFactor);
+      g = Math.min(255, g * scalingFactor);
+      b = Math.min(255, b * scalingFactor);
       data[idx] = r;
       ++idx;
       data[idx] = g;
@@ -669,7 +668,6 @@ var RGBAImage = class _RGBAImage {
     let yi;
     let idxi;
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
       const pixel = (y * width + x) * 4;
       bSum = 0;
       gSum = 0;
@@ -680,14 +678,14 @@ var RGBAImage = class _RGBAImage {
           yi = y + row;
           weight = sharpenKernel[row + rowEnd][col + colEnd];
           idxi = calculate_default.getPixelIndex(xi, yi, width, height);
-          if (idx === -1) {
+          if (idxi === -1) {
             bi = 0;
             gi = 0;
             ri = 0;
           } else {
-            ri = this.data[idx + 0];
-            gi = this.data[idx + 1];
-            bi = this.data[idx + 2];
+            ri = this.data[idxi + 0];
+            gi = this.data[idxi + 1];
+            bi = this.data[idxi + 2];
           }
           rSum += weight * ri;
           gSum += weight * gi;
@@ -722,7 +720,7 @@ var RGBAImage = class _RGBAImage {
   render(cvs) {
     cvs.width = this.w;
     cvs.height = this.h;
-    const context = cvs.getContext("2d");
+    const context = cvs.getContext("2d", { willReadFrequently: true, alpha: false });
     if (context) {
       context.putImageData(this.toImageData(context), 0, 0);
     } else {
@@ -734,7 +732,7 @@ var RGBAImage = class _RGBAImage {
     const h = img.height;
     cvs.width = w;
     cvs.height = h;
-    const ctx = cvs.getContext("2d", { willReadFrequently: true });
+    const ctx = cvs.getContext("2d", { willReadFrequently: true, alpha: false });
     if (ctx) {
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, w, h);

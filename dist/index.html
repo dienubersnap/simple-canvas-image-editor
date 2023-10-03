@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <button id="show_btn">Show Remote Image</button>
+  Upload image:
+  <input type="file" id="files" name="files[]" />
+  <output id="list"></output>
+
+  <table>
+    <tr>
+      <td><input type="checkbox" id="brightnesscontrast">Brightness & Contrast</td>
+    </tr>
+    <tr>
+      <td><input type="range" id="brightnessbar" min="-128" max="128" value="0">Brightness</td>
+      <td>
+        <p id="brightnessval"></p>
+      </td>
+    </tr>
+    <tr>
+      <td><input type="range" id="contrastbar" min="-128" max="128" value="0">Contrast</td>
+      <td>
+        <p id="contrastval"></p>
+      </td>
+    </tr>
+  </table>
+
+  <p id='imageinfo'></p>
+  <div>
+    <div id='div_canvas'>
+      <canvas id="canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- SCRIPT -->
+  <script type="text/javascript" src="./index.js"></script>
+
+  <script>
+    window.onload = function () {
+      setTimeout(() => {
+        const loader = new CanvasImageEdit("./wall.jpg")
+      }, 5000)
+      // const canvas = document.getElementById("canvas")
+
+      // loader.ImageLoader(canvas)
+      // loader.result?.render(canvas)
+      console.log('onload')
+    }
+  </script>
+</body>
+
+</html>

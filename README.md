@@ -28,3 +28,7 @@ yarn add simple-canvas-image-editor
 ```
 
 - For full example see in folder example
+
+## Build
+
+`npm run build`

@@ -275,17 +275,21 @@ export class RGBAImage {
   }
 
   black(val: number) {
-    const normalizedvalue = (val + 100) / 100;
-
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
 
-      const red = (r / 255) * normalizedvalue * 255;
-      const green = (g / 255) * normalizedvalue * 255;
-      const blue = (b / 255) * normalizedvalue * 255;
-      r = Math.min(255, Math.max(0, red));
-      g = Math.min(255, Math.max(0, green));
-      b = Math.min(255, Math.max(0, blue));
+      // Calculate the luminance (brightness) of the pixel
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+
+      // Calculate the new luminance after adjusting the blacks
+      const newLuminance = Math.min(255, Math.max(0, luminance + val));
+
+      // Calculate the scaling factor to maintain the color ratio
+      const scalingFactor = newLuminance / luminance;
+      
+      r = Math.min(255, r * scalingFactor);
+      g = Math.min(255, g * scalingFactor);
+      b = Math.min(255, b * scalingFactor);
 
       data[idx] = r;
       ++idx;
@@ -517,7 +521,7 @@ export class RGBAImage {
     cvs.width = this.w;
     // eslint-disable-next-line no-param-reassign
     cvs.height = this.h;
-    const context = cvs.getContext('2d');
+    const context = cvs.getContext('2d', { willReadFrequently: true, alpha: false });
     if (context) {
       context.putImageData(this.toImageData(context), 0, 0);
     } else {
@@ -534,7 +538,7 @@ export class RGBAImage {
     // eslint-disable-next-line no-param-reassign
     cvs.height = h;
 
-    const ctx = cvs.getContext('2d', { willReadFrequently: true });
+    const ctx = cvs.getContext('2d', { willReadFrequently: true, alpha: false });
     if (ctx) {
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, w, h);

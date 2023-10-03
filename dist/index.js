@@ -739,15 +739,14 @@ var RGBAImage = /*#__PURE__*/ function() {
             key: "black",
             value: function black(val) {
                 var _this = this;
-                var normalizedvalue = (val + 100) / 100;
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
                     var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var red = r / 255 * normalizedvalue * 255;
-                    var green = g / 255 * normalizedvalue * 255;
-                    var blue = b / 255 * normalizedvalue * 255;
-                    r = Math.min(255, Math.max(0, red));
-                    g = Math.min(255, Math.max(0, green));
-                    b = Math.min(255, Math.max(0, blue));
+                    var luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+                    var newLuminance = Math.min(255, Math.max(0, luminance + val));
+                    var scalingFactor = newLuminance / luminance;
+                    r = Math.min(255, r * scalingFactor);
+                    g = Math.min(255, g * scalingFactor);
+                    b = Math.min(255, b * scalingFactor);
                     data[idx] = r;
                     ++idx;
                     data[idx] = g;
@@ -931,7 +930,6 @@ var RGBAImage = /*#__PURE__*/ function() {
                 var yi;
                 var idxi;
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
                     var pixel = (y * width + x) * 4;
                     bSum = 0;
                     gSum = 0;
@@ -942,14 +940,14 @@ var RGBAImage = /*#__PURE__*/ function() {
                             yi = y + row;
                             weight = sharpenKernel[row + rowEnd][col + colEnd];
                             idxi = calculate_default.getPixelIndex(xi, yi, width, height);
-                            if (idx === -1) {
+                            if (idxi === -1) {
                                 bi = 0;
                                 gi = 0;
                                 ri = 0;
                             } else {
-                                ri = _this.data[idx + 0];
-                                gi = _this.data[idx + 1];
-                                bi = _this.data[idx + 2];
+                                ri = _this.data[idxi + 0];
+                                gi = _this.data[idxi + 1];
+                                bi = _this.data[idxi + 2];
                             }
                             rSum += weight * ri;
                             gSum += weight * gi;
@@ -987,7 +985,10 @@ var RGBAImage = /*#__PURE__*/ function() {
             value: function render(cvs) {
                 cvs.width = this.w;
                 cvs.height = this.h;
-                var context = cvs.getContext("2d");
+                var context = cvs.getContext("2d", {
+                    willReadFrequently: true,
+                    alpha: false
+                });
                 if (context) {
                     context.putImageData(this.toImageData(context), 0, 0);
                 } else {
@@ -1004,7 +1005,8 @@ var RGBAImage = /*#__PURE__*/ function() {
                 cvs.width = w;
                 cvs.height = h;
                 var ctx = cvs.getContext("2d", {
-                    willReadFrequently: true
+                    willReadFrequently: true,
+                    alpha: false
                 });
                 if (ctx) {
                     ctx.drawImage(img, 0, 0);

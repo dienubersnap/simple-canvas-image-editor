@@ -7,7 +7,7 @@ import TabsVerticalComponent from "../ui/tabs/tabs-vertical"
 export default function ImageEditor() {
   const [canvasImage, setCanvasImage] = useState<CanvasImageEdit | null>(null)
   useEffect(() => {
-    const loader = new CanvasImageEdit("/wall.jpg")
+    const loader = new CanvasImageEdit("/img10.jpg")
     const canvas = document.getElementById("canvas") as HTMLCanvasElement
 
     loader.ImageLoader(canvas)
