@@ -1,6 +1,7 @@
 export interface AdjustProps {
   exposure: number
   brightness: number
+  hightlight: number
   shadows: number
   whites: number
   blacks: number

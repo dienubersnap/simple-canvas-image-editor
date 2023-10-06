@@ -3,6 +3,7 @@ import { AdjustProps } from "@src/components/image-editor/adjust/types"
 const defaultValueAdjust: AdjustProps = {
   exposure: 0,
   brightness: 0,
+  hightlight: 0,
   shadows: 0,
   whites: 0,
   blacks: 0,
@@ -38,6 +39,9 @@ const ItemAdjust = [
       },
       {
         name: "Brightness",
+      },
+      {
+        name: "Hightlight",
       },
       {
         name: "Shadows",

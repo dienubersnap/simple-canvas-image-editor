@@ -19,15 +19,6 @@ export default function AdjustMain(props: AdjustMainProps) {
     if (cvs) {
       const canvas = document.getElementById("canvas") as HTMLCanvasElement
       if (canvas) {
-        let I = cvs.result
-        if (I) {
-          // Light
-
-          if (name === "clarity") {
-            // eslint-disable-next-line no-alert
-            alert("on proggress")
-          }
-        }
       }
     }
 
@@ -43,15 +34,17 @@ export default function AdjustMain(props: AdjustMainProps) {
       if (canvas) {
         let I = cvs.result
         if (I) {
-          I.brightness(value.brightness)
-            .black(value.blacks)
-            .contrast(value.contrast)
-            .exposure(value.exposure)
-            .white(value.whites)
+          I.exposure(value.exposure)
+            .brightness(value.brightness)
+            .hightlight(value.hightlight)
             .shadow(value.shadows)
-            .tint(value.tint)
+            .white(value.whites)
+            .black(value.blacks)
             .temperature(value.temperature)
+            .tint(value.tint)
             .saturationRGB(value.saturation)
+            .contrast(value.contrast)
+            .clarity(value.clarity)
             .sharpness(value.sharpness)
             .render(canvas)
         }

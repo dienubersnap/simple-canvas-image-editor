@@ -32,10 +32,39 @@ export default function ImageEditor() {
         <Header />
 
         <Grid container>
-          <Grid item md={9}>
-            <canvas id="canvas" style={{ width: "100%", height: "auto" }} />
+          <Grid
+            item
+            md={9}
+            container
+            direction="row"
+            justifyContent="center"
+            alignItems="flex-start"
+          >
+            <div id="ubersnap-editor"></div>
+            <canvas id="canvas" />
           </Grid>
-          <Grid item md={3}>
+          <Grid
+            item
+            md={3}
+            sx={{
+              height: "90vh",
+              overflow: "auto",
+              // scrollbarWidth: "thin",
+              "&::-webkit-scrollbar": {
+                width: "0.4em",
+              },
+              "&::-webkit-scrollbar-track": {
+                background: "#000",
+              },
+              "&::-webkit-scrollbar-thumb": {
+                borderRadius: "10px",
+                backgroundColor: "#252525",
+              },
+              "&::-webkit-scrollbar-thumb:hover": {
+                background: "#555",
+              },
+            }}
+          >
             <TabsVerticalComponent cvs={canvasImage} />
           </Grid>
         </Grid>
