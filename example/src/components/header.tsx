@@ -1,18 +1,37 @@
 import {
   AppBar,
   Box,
+  Button,
   IconButton,
+  Input,
   Toolbar,
   Tooltip,
   Typography,
+  styled,
   useTheme,
 } from "@mui/material"
 import React from "react"
-import { ArrowBack, MoreHoriz } from "@mui/icons-material"
+import { ArrowBack, Cloud, MoreHoriz } from "@mui/icons-material"
 import { Back, ArrowForward } from "iconsax-react"
 import HeaderMore from "./image-editor/header-more"
 
-export default function Header() {
+const VisuallyHiddenInput = styled("input")({
+  clip: "rect(0 0 0 0)",
+  clipPath: "inset(50%)",
+  height: 1,
+  overflow: "hidden",
+  position: "absolute",
+  bottom: 0,
+  left: 0,
+  whiteSpace: "nowrap",
+  width: 1,
+})
+
+interface HeaderProps {
+  handleImage: (image: React.ChangeEvent<HTMLInputElement>) => void
+}
+export default function Header(props: HeaderProps) {
+  const { handleImage } = props
   const theme = useTheme()
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(
     null
@@ -41,6 +60,17 @@ export default function Header() {
             </IconButton>
           </Tooltip>
         </Box>
+
+        <Tooltip title="">
+          <IconButton sx={{ px: 0.5 }}>
+            <Button component="label">
+              <Typography color={theme.palette.neutral.neutral0}>
+                Upload File
+              </Typography>
+              <VisuallyHiddenInput type="file" onChange={handleImage} />
+            </Button>
+          </IconButton>
+        </Tooltip>
 
         <Box sx={{ flexGrow: 1, display: "flex", justifyContent: "flex-end" }}>
           <Tooltip title="Undo">

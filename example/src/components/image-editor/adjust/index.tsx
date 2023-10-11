@@ -16,11 +16,11 @@ export default function AdjustMain(props: AdjustMainProps) {
   const [value, setValue] = React.useState<AdjustProps>(defaultValueAdjust)
 
   const onChange = async (name: string, newValue: number) => {
-    if (cvs) {
-      const canvas = document.getElementById("canvas") as HTMLCanvasElement
-      if (canvas) {
-      }
-    }
+    // if (cvs) {
+    //   const canvas = document.getElementById("canvas") as HTMLCanvasElement
+    //   if (canvas) {
+    //   }
+    // }
 
     setValue((pre) => ({
       ...pre,

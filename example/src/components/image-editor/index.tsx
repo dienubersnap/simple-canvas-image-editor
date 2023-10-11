@@ -7,14 +7,30 @@ import TabsVerticalComponent from "../ui/tabs/tabs-vertical"
 export default function ImageEditor() {
   const [canvasImage, setCanvasImage] = useState<CanvasImageEdit | null>(null)
   useEffect(() => {
-    const loader = new CanvasImageEdit("/img10.jpg")
+    const loader = new CanvasImageEdit()
     const canvas = document.getElementById("canvas") as HTMLCanvasElement
 
-    loader.ImageLoader(canvas)
+    loader.ImageLoader(canvas, "/img10.jpg")
     loader.result?.render(canvas)
 
     setCanvasImage(loader)
   }, [])
+
+  const [_, setSelectedFile] = useState<File | null>(null) // Define selectedFile type
+
+  const handleCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedFile(event.target.files[0])
+
+      const canvas = document.getElementById("canvas") as HTMLCanvasElement
+      let fr = new FileReader()
+      fr.onload = function () {
+        canvasImage?.ImageLoader(canvas, fr.result as string)
+        canvasImage?.result?.render(canvas)
+      }
+      fr.readAsDataURL(event.target.files[0])
+    }
+  }
 
   const theme = useTheme()
   return (
@@ -29,7 +45,7 @@ export default function ImageEditor() {
       }}
     >
       <Container>
-        <Header />
+        <Header handleImage={handleCapture} />
 
         <Grid container>
           <Grid

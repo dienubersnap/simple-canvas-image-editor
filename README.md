@@ -32,3 +32,18 @@ yarn add simple-canvas-image-editor
 ## Build
 
 `npm run build`
+
+## Feature
+
+- [x] Exposure
+- [x] Brightness
+- [x] Hightlight
+- [x] Shadow
+- [x] White
+- [x] Black
+- [x] Temperature
+- [x] Tint
+- [x] Saturationrgb
+- [x] Contrast
+- [x] Clarity
+- [x] Sharpness

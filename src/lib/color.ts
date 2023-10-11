@@ -362,7 +362,7 @@ export class RGBAImage {
   }
 
   white(val: number) {
-    val /= 10
+    val /= 10;
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       const { r, g, b } = this.getPixel(x, y);
       const hsv = rgbToHsv(r, g, b);
@@ -381,7 +381,7 @@ export class RGBAImage {
   }
 
   black(val: number) {
-    val /= 2
+    val /= 2;
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
 
@@ -608,7 +608,7 @@ export class RGBAImage {
     }
   }
 
-  static fromImage(img: HTMLImageElement, cvs: HTMLCanvasElement): RGBAImage {
+  static fromImage(img: any, cvs: HTMLCanvasElement): RGBAImage {
     const w = img.width;
     const h = img.height;
     // eslint-disable-next-line no-param-reassign
