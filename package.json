@@ -12,10 +12,10 @@
   },
   "author": "Achmad",
   "license": "ISC",
-  "homepage": "https://github.com/achmadAt/canvas-image-editor",
+  "homepage": "https://github.com/achmadAt/simple-canvas-image-editor",
   "repository": {
     "type": "git",
-    "url": "https://github.com/achmadAt/canvas-image-editor.git"
+    "url": "https://github.com/achmadAt/simple-canvas-image-editor.git"
   },
   "publishConfig": {
     "access": "public",
@@ -27,7 +27,7 @@
     "/dist"
   ],
   "bugs": {
-    "url": "https://github.com/achmadAt/canvas-image-editor/issues"
+    "url": "https://github.com/achmadAt/simple-canvas-image-editor/issues"
   },
   "devDependencies": {
     "@changesets/cli": "^2.26.2",
@@ -51,6 +51,7 @@
   },
   "keywords": [
     "canvas",
-    "image-edit"
+    "image-edit",
+    "react"
   ]
 }

@@ -132,6 +132,89 @@ export class RGBAImage {
     return dst;
   }
 
+  convolution(kernel: number[][]) {
+    const kRows: number = kernel.length;
+    const kCols: number = kernel[0].length;
+    const rowEnd: number = Math.floor(kRows / 2);
+    const colEnd: number = Math.floor(kCols / 2);
+    const rowIni: number = -rowEnd;
+    const colIni: number = -colEnd;
+    const width: number = this.w;
+    const height: number = this.h;
+
+    let weight: number;
+    let rSum: number;
+    let gSum: number;
+    let bSum: number;
+    let ri: number;
+    let gi: number;
+    let bi: number;
+    let xi: number;
+    let yi: number;
+    let idxi: number;
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      const pixel: number = (y * width + x) * 4;
+      bSum = 0;
+      gSum = 0;
+      rSum = 0;
+
+      for (let row: number = rowIni; row <= rowEnd; row++) {
+        for (let col: number = colIni; col <= colEnd; col++) {
+          xi = x + col;
+          yi = y + row;
+          weight = kernel[row + rowEnd][col + colEnd];
+          idxi = Calculate.getPixelIndex(xi, yi, width, height);
+
+          if (idxi === -1) {
+            bi = 0;
+            gi = 0;
+            ri = 0;
+          } else {
+            ri = this.data[idxi + 0];
+            gi = this.data[idxi + 1];
+            bi = this.data[idxi + 2];
+          }
+
+          rSum += weight * ri;
+          gSum += weight * gi;
+          bSum += weight * bi;
+        }
+      }
+
+      if (rSum < 0) {
+        rSum = 0;
+      }
+
+      if (gSum < 0) {
+        gSum = 0;
+      }
+
+      if (bSum < 0) {
+        bSum = 0;
+      }
+
+      if (rSum > 255) {
+        rSum = 255;
+      }
+
+      if (gSum > 255) {
+        gSum = 255;
+      }
+
+      if (bSum > 255) {
+        bSum = 255;
+      }
+
+      data[pixel + 0] = rSum;
+      data[pixel + 1] = gSum;
+      data[pixel + 2] = bSum;
+
+      return data;
+    });
+    return dst;
+  }
+
   resize(w: number, h: number): RGBAImage {
     const iw = this.w;
     const ih = this.h;
@@ -236,12 +319,12 @@ export class RGBAImage {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
 
-        let red = r + (value / 5)
-        let green = g + (value / 5)
-        let blue = b + (value / 5)
-        r = Math.min(255, Math.max(0, red));
-        g = Math.min(255, Math.max(0, green));
-        b = Math.min(255, Math.max(0, blue));
+      let red = r + value / 5;
+      let green = g + value / 5;
+      let blue = b + value / 5;
+      r = Math.min(255, Math.max(0, red));
+      g = Math.min(255, Math.max(0, green));
+      b = Math.min(255, Math.max(0, blue));
 
       data[idx] = r;
       ++idx;
@@ -279,6 +362,7 @@ export class RGBAImage {
   }
 
   white(val: number) {
+    val /= 10
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       const { r, g, b } = this.getPixel(x, y);
       const hsv = rgbToHsv(r, g, b);
@@ -297,6 +381,7 @@ export class RGBAImage {
   }
 
   black(val: number) {
+    val /= 2
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
 
@@ -308,7 +393,7 @@ export class RGBAImage {
 
       // Calculate the scaling factor to maintain the color ratio
       const scalingFactor = newLuminance / luminance;
-      
+
       r = Math.min(255, r * scalingFactor);
       g = Math.min(255, g * scalingFactor);
       b = Math.min(255, b * scalingFactor);
@@ -329,7 +414,7 @@ export class RGBAImage {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       const { r, b } = this.getPixel(x, y);
       let { g } = this.getPixel(x, y);
-      const green = g + value
+      const green = g - value;
       g = Math.min(255, Math.max(0, green));
 
       data[idx] = r;
@@ -424,7 +509,7 @@ export class RGBAImage {
 
   clarity(value: number) {
     let clarityKernel: number[][];
-    value /= 80
+    value /= 80;
     if (value === 0) {
       // If the value is 0, no change to the image
       clarityKernel = [
@@ -434,216 +519,74 @@ export class RGBAImage {
       ];
     } else if (value > 0) {
       // If the value is positive, apply clarity
-      clarityKernel = [ 
-        [0 , -0.5, 0 + Math.abs(value) / 5],
-        [-0.5 + Math.abs(value) / 50, 2.9, -0.5  + Math.abs(value) / 50],
-        [0, -0.5, 0]
-    ];
+      clarityKernel = [
+        [0, -0.5, 0 + Math.abs(value) / 5],
+        [-0.5 + Math.abs(value) / 50, 2.9, -0.5 + Math.abs(value) / 50],
+        [0, -0.5, 0],
+      ];
     } else {
       // If the value is negative, apply smoothing (blurring)
       clarityKernel = [
         [0.1, 0.1, 0.1],
         [0.1, 0.19 + Math.abs(value) / 50, 0.1],
-        [0.1, 0.1, 0.1]
+        [0.1, 0.1, 0.1],
       ];
     }
 
-    
-    const kRows: number = clarityKernel.length;
-    const kCols: number = clarityKernel[0].length;
-    const rowEnd: number = Math.floor(kRows / 2);
-    const colEnd: number = Math.floor(kCols / 2);
-    const rowIni: number = -rowEnd;
-    const colIni: number = -colEnd;
-    const width: number = this.w
-    const height: number = this.h
-  
-    let weight: number;
-    let rSum: number;
-    let gSum: number;
-    let bSum: number;
-    let ri: number;
-    let gi: number;
-    let bi: number;
-    let xi: number;
-    let yi: number;
-    let idxi: number;
-
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      const pixel: number = (y * width + x) * 4;
-      bSum = 0;
-      gSum = 0;
-      rSum = 0;
-
-      for (let row: number = rowIni; row <= rowEnd; row++) {
-        for (let col: number = colIni; col <= colEnd; col++) {
-          xi = x + col;
-          yi = y + row;
-          weight = clarityKernel[row + rowEnd][col + colEnd];
-          idxi = Calculate.getPixelIndex(xi, yi, width, height);
-
-          if (idxi === -1) {
-            bi = 0;
-            gi = 0;
-            ri = 0;
-          } else {
-            ri = this.data[idxi + 0];
-            gi = this.data[idxi + 1];
-            bi = this.data[idxi + 2];
-          }
-
-          rSum += weight * ri;
-          gSum += weight * gi;
-          bSum += weight * bi;
-        }
-      }
-      
-      if (rSum < 0) {
-        rSum = 0;
-      }
-
-      if (gSum < 0) {
-        gSum = 0;
-      }
-
-      if (bSum < 0) {
-        bSum = 0;
-      }
-
-      if (rSum > 255) {
-        rSum = 255;
-      }
-
-      if (gSum > 255) {
-        gSum = 255;
-      }
-
-      if (bSum > 255) {
-        bSum = 255;
-      }
-
-      data[pixel + 0] = rSum;
-      data[pixel + 1] = gSum;
-      data[pixel + 2] = bSum;
-
-      return data;
-
-    })
+    const dst = this.convolution(clarityKernel);
     return dst;
   }
-
   sharpness(value: number) {
     let sharpenKernel: number[][];
-    
-    if (value === 0) {
-      // If the value is 0, no change to the image
-      sharpenKernel = [
-        [0, 0, 0],
-        [0, 1, 0],
-        [0, 0, 0],
-      ];
-    } else if (value > 0) {
-      // If the value is positive, apply sharpening
-      const sharpeningFactor: number = (value / 400);
-      sharpenKernel = [
-        [-1, -1, -1],
-        [-1, 9 + sharpeningFactor, -1],
-        [-1, -1, -1],
-      ];
-    } else {
-      // If the value is negative, apply smoothing (blurring)
-      const smoothingFactor: number = (Math.abs(value) / 400);
-      sharpenKernel = [
-        [0, 1 - smoothingFactor, 0],
-        [0, 0, 0],
-        [0 + smoothingFactor, 0, 0],
-      ];
+    switch (true) {
+      case value < -10:
+        // If the value is minus, apply blurring
+        sharpenKernel = [
+          [1 / 9, 1 / 9, 1 / 9],
+          [1 / 9, 1 / 9, 1 / 9],
+          [1 / 9, 1 / 9, 1 / 9],
+        ];
+        break;
+      case value < -20:
+        sharpenKernel = [
+          [1 / 8, 1 / 4, 1 / 8],
+          [1 / 4, 1 / 2, 1 / 4],
+          [1 / 8, 1 / 4, 1 / 8],
+        ];
+        break;
+      case value > 0 && value <= 30:
+        // If the value is positive, apply sharpening
+        sharpenKernel = [
+          [0, -0.5, 0],
+          [-0.5, 3, -0.5],
+          [0, -0.5, 0],
+        ];
+        break;
+      case value > 30 && value <= 70:
+        sharpenKernel = [
+          [0, -1, 0],
+          [-1, 5, -1],
+          [0, -1, 0],
+        ];
+        break;
+      case value > 70:
+        sharpenKernel = [
+          [-1, -1, -1],
+          [-1, 9, -1],
+          [-1, -1, -1],
+        ];
+        break;
+      default:
+        // If the value is negative, apply smoothing (blurring)
+        sharpenKernel = [
+          [0, 0, 0],
+          [0, 1, 0],
+          [0, 0, 0],
+        ];
+        break;
     }
 
-    // const uin8toBuffer = Buffer.from(this.data);
-    // let data = Calculate.convolution(this.data, sharpenKernel, this.w, this.h);
-    // return data
-
-    const kRows: number = sharpenKernel.length;
-    const kCols: number = sharpenKernel[0].length;
-    const rowEnd: number = Math.floor(kRows / 2);
-    const colEnd: number = Math.floor(kCols / 2);
-    const rowIni: number = -rowEnd;
-    const colIni: number = -colEnd;
-    const width: number = this.w
-    const height: number = this.h
-  
-    let weight: number;
-    let rSum: number;
-    let gSum: number;
-    let bSum: number;
-    let ri: number;
-    let gi: number;
-    let bi: number;
-    let xi: number;
-    let yi: number;
-    let idxi: number;
-
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-
-    const pixel: number = (y * width + x) * 4;
-      bSum = 0;
-      gSum = 0;
-      rSum = 0;
-  
-    for (let row: number = rowIni; row <= rowEnd; row++) {
-      for (let col: number = colIni; col <= colEnd; col++) {
-        xi = x + col;
-        yi = y + row;
-        weight = sharpenKernel[row + rowEnd][col + colEnd];
-        idxi = Calculate.getPixelIndex(xi, yi, width, height);
-
-        if (idxi === -1) {
-          bi = 0;
-          gi = 0;
-          ri = 0;
-        } else {
-          ri = this.data[idxi + 0];
-          gi = this.data[idxi + 1];
-          bi = this.data[idxi + 2];
-        }
-
-        rSum += weight * ri;
-        gSum += weight * gi;
-        bSum += weight * bi;
-      }
-    }
-
-      if (rSum < 0) {
-        rSum = 0;
-      }
-
-      if (gSum < 0) {
-        gSum = 0;
-      }
-
-      if (bSum < 0) {
-        bSum = 0;
-      }
-
-      if (rSum > 255) {
-        rSum = 255;
-      }
-
-      if (gSum > 255) {
-        gSum = 255;
-      }
-
-      if (bSum > 255) {
-        bSum = 255;
-      }
-
-      data[pixel + 0] = rSum;
-      data[pixel + 1] = gSum;
-      data[pixel + 2] = bSum;
-
-      return data;
-    });
+    let dst: RGBAImage = this.convolution(sharpenKernel);
 
     return dst;
   }
@@ -653,7 +596,10 @@ export class RGBAImage {
     cvs.width = this.w;
     // eslint-disable-next-line no-param-reassign
     cvs.height = this.h;
-    const context = cvs.getContext('2d', { willReadFrequently: true, alpha: false });
+    const context = cvs.getContext('2d', {
+      willReadFrequently: true,
+      alpha: false,
+    });
     if (context) {
       context.putImageData(this.toImageData(context), 0, 0);
     } else {
@@ -670,7 +616,10 @@ export class RGBAImage {
     // eslint-disable-next-line no-param-reassign
     cvs.height = h;
 
-    const ctx = cvs.getContext('2d', { willReadFrequently: true, alpha: false });
+    const ctx = cvs.getContext('2d', {
+      willReadFrequently: true,
+      alpha: false,
+    });
     if (ctx) {
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, w, h);

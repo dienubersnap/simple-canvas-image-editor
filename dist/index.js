@@ -598,6 +598,79 @@ var RGBAImage = /*#__PURE__*/ function() {
             }
         },
         {
+            key: "convolution",
+            value: function convolution(kernel) {
+                var _this = this;
+                var kRows = kernel.length;
+                var kCols = kernel[0].length;
+                var rowEnd = Math.floor(kRows / 2);
+                var colEnd = Math.floor(kCols / 2);
+                var rowIni = -rowEnd;
+                var colIni = -colEnd;
+                var width = this.w;
+                var height = this.h;
+                var weight;
+                var rSum;
+                var gSum;
+                var bSum;
+                var ri;
+                var gi;
+                var bi;
+                var xi;
+                var yi;
+                var idxi;
+                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
+                    var pixel = (y * width + x) * 4;
+                    bSum = 0;
+                    gSum = 0;
+                    rSum = 0;
+                    for(var row = rowIni; row <= rowEnd; row++){
+                        for(var col = colIni; col <= colEnd; col++){
+                            xi = x + col;
+                            yi = y + row;
+                            weight = kernel[row + rowEnd][col + colEnd];
+                            idxi = calculate_default.getPixelIndex(xi, yi, width, height);
+                            if (idxi === -1) {
+                                bi = 0;
+                                gi = 0;
+                                ri = 0;
+                            } else {
+                                ri = _this.data[idxi + 0];
+                                gi = _this.data[idxi + 1];
+                                bi = _this.data[idxi + 2];
+                            }
+                            rSum += weight * ri;
+                            gSum += weight * gi;
+                            bSum += weight * bi;
+                        }
+                    }
+                    if (rSum < 0) {
+                        rSum = 0;
+                    }
+                    if (gSum < 0) {
+                        gSum = 0;
+                    }
+                    if (bSum < 0) {
+                        bSum = 0;
+                    }
+                    if (rSum > 255) {
+                        rSum = 255;
+                    }
+                    if (gSum > 255) {
+                        gSum = 255;
+                    }
+                    if (bSum > 255) {
+                        bSum = 255;
+                    }
+                    data[pixel + 0] = rSum;
+                    data[pixel + 1] = gSum;
+                    data[pixel + 2] = bSum;
+                    return data;
+                });
+                return dst;
+            }
+        },
+        {
             key: "resize",
             value: function resize(w, h) {
                 var iw = this.w;
@@ -694,6 +767,28 @@ var RGBAImage = /*#__PURE__*/ function() {
             }
         },
         {
+            key: "hightlight",
+            value: function hightlight(value) {
+                var _this = this;
+                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
+                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
+                    var red = r + value / 5;
+                    var green = g + value / 5;
+                    var blue = b + value / 5;
+                    r = Math.min(255, Math.max(0, red));
+                    g = Math.min(255, Math.max(0, green));
+                    b = Math.min(255, Math.max(0, blue));
+                    data[idx] = r;
+                    ++idx;
+                    data[idx] = g;
+                    ++idx;
+                    data[idx] = b;
+                    return data;
+                });
+                return dst;
+            }
+        },
+        {
             key: "shadow",
             value: function shadow(value) {
                 var _this = this;
@@ -720,6 +815,7 @@ var RGBAImage = /*#__PURE__*/ function() {
             key: "white",
             value: function white(val) {
                 var _this = this;
+                val /= 10;
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
                     var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
                     var hsv = rgbToHsv(r, g, b);
@@ -739,6 +835,7 @@ var RGBAImage = /*#__PURE__*/ function() {
             key: "black",
             value: function black(val) {
                 var _this = this;
+                val /= 2;
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
                     var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
                     var luminance = 0.299 * r + 0.587 * g + 0.114 * b;
@@ -765,7 +862,7 @@ var RGBAImage = /*#__PURE__*/ function() {
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
                     var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, b = _this_getPixel.b;
                     var g = _this.getPixel(x, y).g;
-                    var green = g + value;
+                    var green = g - value;
                     g = Math.min(255, Math.max(0, green));
                     data[idx] = r;
                     ++idx;
@@ -850,12 +947,12 @@ var RGBAImage = /*#__PURE__*/ function() {
             }
         },
         {
-            key: "sharpness",
-            value: function sharpness(value) {
-                var _this = this;
-                var sharpenKernel;
+            key: "clarity",
+            value: function clarity(value) {
+                var clarityKernel;
+                value /= 80;
                 if (value === 0) {
-                    sharpenKernel = [
+                    clarityKernel = [
                         [
                             0,
                             0,
@@ -873,110 +970,167 @@ var RGBAImage = /*#__PURE__*/ function() {
                         ]
                     ];
                 } else if (value > 0) {
-                    var sharpeningFactor = value / 400;
-                    sharpenKernel = [
+                    clarityKernel = [
                         [
-                            -1,
-                            -1,
-                            -1
+                            0,
+                            -0.5,
+                            0 + Math.abs(value) / 5
                         ],
                         [
-                            -1,
-                            9 + sharpeningFactor,
-                            -1
+                            -0.5 + Math.abs(value) / 50,
+                            2.9,
+                            -0.5 + Math.abs(value) / 50
                         ],
                         [
-                            -1,
-                            -1,
-                            -1
+                            0,
+                            -0.5,
+                            0
                         ]
                     ];
                 } else {
-                    var smoothingFactor = Math.abs(value) / 400;
-                    sharpenKernel = [
+                    clarityKernel = [
                         [
-                            0,
-                            1 - smoothingFactor,
-                            0
+                            0.1,
+                            0.1,
+                            0.1
                         ],
                         [
-                            0,
-                            0,
-                            0
+                            0.1,
+                            0.19 + Math.abs(value) / 50,
+                            0.1
                         ],
                         [
-                            0 + smoothingFactor,
-                            0,
-                            0
+                            0.1,
+                            0.1,
+                            0.1
                         ]
                     ];
                 }
-                var kRows = sharpenKernel.length;
-                var kCols = sharpenKernel[0].length;
-                var rowEnd = Math.floor(kRows / 2);
-                var colEnd = Math.floor(kCols / 2);
-                var rowIni = -rowEnd;
-                var colIni = -colEnd;
-                var width = this.w;
-                var height = this.h;
-                var weight;
-                var rSum;
-                var gSum;
-                var bSum;
-                var ri;
-                var gi;
-                var bi;
-                var xi;
-                var yi;
-                var idxi;
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var pixel = (y * width + x) * 4;
-                    bSum = 0;
-                    gSum = 0;
-                    rSum = 0;
-                    for(var row = rowIni; row <= rowEnd; row++){
-                        for(var col = colIni; col <= colEnd; col++){
-                            xi = x + col;
-                            yi = y + row;
-                            weight = sharpenKernel[row + rowEnd][col + colEnd];
-                            idxi = calculate_default.getPixelIndex(xi, yi, width, height);
-                            if (idxi === -1) {
-                                bi = 0;
-                                gi = 0;
-                                ri = 0;
-                            } else {
-                                ri = _this.data[idxi + 0];
-                                gi = _this.data[idxi + 1];
-                                bi = _this.data[idxi + 2];
-                            }
-                            rSum += weight * ri;
-                            gSum += weight * gi;
-                            bSum += weight * bi;
-                        }
-                    }
-                    if (rSum < 0) {
-                        rSum = 0;
-                    }
-                    if (gSum < 0) {
-                        gSum = 0;
-                    }
-                    if (bSum < 0) {
-                        bSum = 0;
-                    }
-                    if (rSum > 255) {
-                        rSum = 255;
-                    }
-                    if (gSum > 255) {
-                        gSum = 255;
-                    }
-                    if (bSum > 255) {
-                        bSum = 255;
-                    }
-                    data[pixel + 0] = rSum;
-                    data[pixel + 1] = gSum;
-                    data[pixel + 2] = bSum;
-                    return data;
-                });
+                var dst = this.convolution(clarityKernel);
+                return dst;
+            }
+        },
+        {
+            key: "sharpness",
+            value: function sharpness(value) {
+                var sharpenKernel;
+                switch(true){
+                    case value < -10:
+                        sharpenKernel = [
+                            [
+                                1 / 9,
+                                1 / 9,
+                                1 / 9
+                            ],
+                            [
+                                1 / 9,
+                                1 / 9,
+                                1 / 9
+                            ],
+                            [
+                                1 / 9,
+                                1 / 9,
+                                1 / 9
+                            ]
+                        ];
+                        break;
+                    case value < -20:
+                        sharpenKernel = [
+                            [
+                                1 / 8,
+                                1 / 4,
+                                1 / 8
+                            ],
+                            [
+                                1 / 4,
+                                1 / 2,
+                                1 / 4
+                            ],
+                            [
+                                1 / 8,
+                                1 / 4,
+                                1 / 8
+                            ]
+                        ];
+                        break;
+                    case value > 0 && value <= 30:
+                        sharpenKernel = [
+                            [
+                                0,
+                                -0.5,
+                                0
+                            ],
+                            [
+                                -0.5,
+                                3,
+                                -0.5
+                            ],
+                            [
+                                0,
+                                -0.5,
+                                0
+                            ]
+                        ];
+                        break;
+                    case value > 30 && value <= 70:
+                        sharpenKernel = [
+                            [
+                                0,
+                                -1,
+                                0
+                            ],
+                            [
+                                -1,
+                                5,
+                                -1
+                            ],
+                            [
+                                0,
+                                -1,
+                                0
+                            ]
+                        ];
+                        break;
+                    case value > 70:
+                        sharpenKernel = [
+                            [
+                                -1,
+                                -1,
+                                -1
+                            ],
+                            [
+                                -1,
+                                9,
+                                -1
+                            ],
+                            [
+                                -1,
+                                -1,
+                                -1
+                            ]
+                        ];
+                        break;
+                    default:
+                        sharpenKernel = [
+                            [
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                0,
+                                1,
+                                0
+                            ],
+                            [
+                                0,
+                                0,
+                                0
+                            ]
+                        ];
+                        break;
+                }
+                var dst = this.convolution(sharpenKernel);
                 return dst;
             }
         },

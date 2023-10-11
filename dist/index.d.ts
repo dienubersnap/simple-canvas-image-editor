@@ -19,12 +19,14 @@ declare class RGBAImage {
     setPixel(x: number, y: number, c: Color): void;
     apply(f: (color: Color) => Color): this;
     formatUint8Array(f: (data: Uint8Array, idx: number, w: number, h: number, x: number, y: number) => void): RGBAImage;
+    convolution(kernel: number[][]): RGBAImage;
     resize(w: number, h: number): RGBAImage;
     resize_longedge(L: number): this;
     uploadTexture(ctx: WebGLRenderingContext, texId: WebGLTexture): void;
     toImageData(ctx: CanvasRenderingContext2D): ImageData;
     exposure(value: number): RGBAImage;
     brightness(value: number): RGBAImage;
+    hightlight(value: number): RGBAImage;
     shadow(value: number): RGBAImage;
     white(val: number): RGBAImage;
     black(val: number): RGBAImage;
@@ -32,6 +34,7 @@ declare class RGBAImage {
     temperature(value: number): RGBAImage;
     saturationRGB(value: number): RGBAImage;
     contrast(value: number): RGBAImage;
+    clarity(value: number): RGBAImage;
     sharpness(value: number): RGBAImage;
     render(cvs: HTMLCanvasElement): void;
     static fromImage(img: HTMLImageElement, cvs: HTMLCanvasElement): RGBAImage;

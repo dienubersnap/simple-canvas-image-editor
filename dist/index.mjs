@@ -409,6 +409,75 @@ var RGBAImage = class _RGBAImage {
     }
     return dst;
   }
+  convolution(kernel) {
+    const kRows = kernel.length;
+    const kCols = kernel[0].length;
+    const rowEnd = Math.floor(kRows / 2);
+    const colEnd = Math.floor(kCols / 2);
+    const rowIni = -rowEnd;
+    const colIni = -colEnd;
+    const width = this.w;
+    const height = this.h;
+    let weight;
+    let rSum;
+    let gSum;
+    let bSum;
+    let ri;
+    let gi;
+    let bi;
+    let xi;
+    let yi;
+    let idxi;
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      const pixel = (y * width + x) * 4;
+      bSum = 0;
+      gSum = 0;
+      rSum = 0;
+      for (let row = rowIni; row <= rowEnd; row++) {
+        for (let col = colIni; col <= colEnd; col++) {
+          xi = x + col;
+          yi = y + row;
+          weight = kernel[row + rowEnd][col + colEnd];
+          idxi = calculate_default.getPixelIndex(xi, yi, width, height);
+          if (idxi === -1) {
+            bi = 0;
+            gi = 0;
+            ri = 0;
+          } else {
+            ri = this.data[idxi + 0];
+            gi = this.data[idxi + 1];
+            bi = this.data[idxi + 2];
+          }
+          rSum += weight * ri;
+          gSum += weight * gi;
+          bSum += weight * bi;
+        }
+      }
+      if (rSum < 0) {
+        rSum = 0;
+      }
+      if (gSum < 0) {
+        gSum = 0;
+      }
+      if (bSum < 0) {
+        bSum = 0;
+      }
+      if (rSum > 255) {
+        rSum = 255;
+      }
+      if (gSum > 255) {
+        gSum = 255;
+      }
+      if (bSum > 255) {
+        bSum = 255;
+      }
+      data[pixel + 0] = rSum;
+      data[pixel + 1] = gSum;
+      data[pixel + 2] = bSum;
+      return data;
+    });
+    return dst;
+  }
   resize(w, h) {
     const iw = this.w;
     const ih = this.h;
@@ -495,6 +564,24 @@ var RGBAImage = class _RGBAImage {
     });
     return dst;
   }
+  hightlight(value) {
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+      let red = r + value / 5;
+      let green = g + value / 5;
+      let blue = b + value / 5;
+      r = Math.min(255, Math.max(0, red));
+      g = Math.min(255, Math.max(0, green));
+      b = Math.min(255, Math.max(0, blue));
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+      return data;
+    });
+    return dst;
+  }
   shadow(value) {
     const normalizedvalue = 2 ** (value / 100);
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
@@ -515,6 +602,7 @@ var RGBAImage = class _RGBAImage {
     return dst;
   }
   white(val) {
+    val /= 10;
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       const { r, g, b } = this.getPixel(x, y);
       const hsv = rgbToHsv(r, g, b);
@@ -530,6 +618,7 @@ var RGBAImage = class _RGBAImage {
     return dst;
   }
   black(val) {
+    val /= 2;
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
       const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
@@ -552,7 +641,7 @@ var RGBAImage = class _RGBAImage {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       const { r, b } = this.getPixel(x, y);
       let { g } = this.getPixel(x, y);
-      const green = g + value;
+      const green = g - value;
       g = Math.min(255, Math.max(0, green));
       data[idx] = r;
       ++idx;
@@ -626,101 +715,87 @@ var RGBAImage = class _RGBAImage {
     });
     return dst;
   }
-  sharpness(value) {
-    let sharpenKernel;
+  clarity(value) {
+    let clarityKernel;
+    value /= 80;
     if (value === 0) {
-      sharpenKernel = [
+      clarityKernel = [
         [0, 0, 0],
         [0, 1, 0],
         [0, 0, 0]
       ];
     } else if (value > 0) {
-      const sharpeningFactor = value / 400;
-      sharpenKernel = [
-        [-1, -1, -1],
-        [-1, 9 + sharpeningFactor, -1],
-        [-1, -1, -1]
+      clarityKernel = [
+        [0, -0.5, 0 + Math.abs(value) / 5],
+        [-0.5 + Math.abs(value) / 50, 2.9, -0.5 + Math.abs(value) / 50],
+        [0, -0.5, 0]
       ];
     } else {
-      const smoothingFactor = Math.abs(value) / 400;
-      sharpenKernel = [
-        [0, 1 - smoothingFactor, 0],
-        [0, 0, 0],
-        [0 + smoothingFactor, 0, 0]
+      clarityKernel = [
+        [0.1, 0.1, 0.1],
+        [0.1, 0.19 + Math.abs(value) / 50, 0.1],
+        [0.1, 0.1, 0.1]
       ];
     }
-    const kRows = sharpenKernel.length;
-    const kCols = sharpenKernel[0].length;
-    const rowEnd = Math.floor(kRows / 2);
-    const colEnd = Math.floor(kCols / 2);
-    const rowIni = -rowEnd;
-    const colIni = -colEnd;
-    const width = this.w;
-    const height = this.h;
-    let weight;
-    let rSum;
-    let gSum;
-    let bSum;
-    let ri;
-    let gi;
-    let bi;
-    let xi;
-    let yi;
-    let idxi;
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      const pixel = (y * width + x) * 4;
-      bSum = 0;
-      gSum = 0;
-      rSum = 0;
-      for (let row = rowIni; row <= rowEnd; row++) {
-        for (let col = colIni; col <= colEnd; col++) {
-          xi = x + col;
-          yi = y + row;
-          weight = sharpenKernel[row + rowEnd][col + colEnd];
-          idxi = calculate_default.getPixelIndex(xi, yi, width, height);
-          if (idxi === -1) {
-            bi = 0;
-            gi = 0;
-            ri = 0;
-          } else {
-            ri = this.data[idxi + 0];
-            gi = this.data[idxi + 1];
-            bi = this.data[idxi + 2];
-          }
-          rSum += weight * ri;
-          gSum += weight * gi;
-          bSum += weight * bi;
-        }
-      }
-      if (rSum < 0) {
-        rSum = 0;
-      }
-      if (gSum < 0) {
-        gSum = 0;
-      }
-      if (bSum < 0) {
-        bSum = 0;
-      }
-      if (rSum > 255) {
-        rSum = 255;
-      }
-      if (gSum > 255) {
-        gSum = 255;
-      }
-      if (bSum > 255) {
-        bSum = 255;
-      }
-      data[pixel + 0] = rSum;
-      data[pixel + 1] = gSum;
-      data[pixel + 2] = bSum;
-      return data;
-    });
+    const dst = this.convolution(clarityKernel);
+    return dst;
+  }
+  sharpness(value) {
+    let sharpenKernel;
+    switch (true) {
+      case value < -10:
+        sharpenKernel = [
+          [1 / 9, 1 / 9, 1 / 9],
+          [1 / 9, 1 / 9, 1 / 9],
+          [1 / 9, 1 / 9, 1 / 9]
+        ];
+        break;
+      case value < -20:
+        sharpenKernel = [
+          [1 / 8, 1 / 4, 1 / 8],
+          [1 / 4, 1 / 2, 1 / 4],
+          [1 / 8, 1 / 4, 1 / 8]
+        ];
+        break;
+      case (value > 0 && value <= 30):
+        sharpenKernel = [
+          [0, -0.5, 0],
+          [-0.5, 3, -0.5],
+          [0, -0.5, 0]
+        ];
+        break;
+      case (value > 30 && value <= 70):
+        sharpenKernel = [
+          [0, -1, 0],
+          [-1, 5, -1],
+          [0, -1, 0]
+        ];
+        break;
+      case value > 70:
+        sharpenKernel = [
+          [-1, -1, -1],
+          [-1, 9, -1],
+          [-1, -1, -1]
+        ];
+        break;
+      default:
+        sharpenKernel = [
+          [0, 0, 0],
+          [0, 1, 0],
+          [0, 0, 0]
+        ];
+        break;
+    }
+    let dst = this.convolution(sharpenKernel);
     return dst;
   }
   render(cvs) {
     cvs.width = this.w;
     cvs.height = this.h;
-    const context = cvs.getContext("2d", { willReadFrequently: true, alpha: false });
+    const context = cvs.getContext("2d", {
+      willReadFrequently: true,
+      alpha: false
+    });
     if (context) {
       context.putImageData(this.toImageData(context), 0, 0);
     } else {
@@ -732,7 +807,10 @@ var RGBAImage = class _RGBAImage {
     const h = img.height;
     cvs.width = w;
     cvs.height = h;
-    const ctx = cvs.getContext("2d", { willReadFrequently: true, alpha: false });
+    const ctx = cvs.getContext("2d", {
+      willReadFrequently: true,
+      alpha: false
+    });
     if (ctx) {
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, w, h);
