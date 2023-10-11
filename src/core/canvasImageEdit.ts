@@ -1,11 +1,8 @@
 import { RGBAImage } from '../lib/color.ts';
 class CanvasImageEdit {
-  private image: HTMLImageElement;
   public result: RGBAImage | undefined;
 
-  constructor() {
-    this.image = new Image();
-  }
+  constructor() {}
 
   public ImageLoader(
     cvs: HTMLCanvasElement,
@@ -17,7 +14,6 @@ class CanvasImageEdit {
     image.src = imageSrc;
     image.setAttribute('crossOrigin', 'anonymous');
     image.onload = function () {
-      console.log(image);
       const inImg = RGBAImage.fromImage(image, cvs);
       that.result = inImg.resize_longedge(maxEdge || 640);
       that.result.render(cvs);
