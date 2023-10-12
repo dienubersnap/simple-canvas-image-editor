@@ -15,6 +15,8 @@ const defaultValueAdjust: AdjustProps = {
   sharpness: 0,
 }
 
+const minMaxSlider = ["hightlight", "shadows", "whites", "blacks"]
+
 const moreActionButton = [
   {
     title: "Revert to original",
@@ -61,7 +63,7 @@ const ItemAdjust = [
         name: "Temperature",
       },
       {
-        name: "Tint"
+        name: "Tint",
       },
       {
         name: "Saturation",
@@ -175,4 +177,10 @@ const itemTransform = [
   },
 ]
 
-export { itemTransform, ItemAdjust, moreActionButton, defaultValueAdjust }
+export {
+  itemTransform,
+  ItemAdjust,
+  moreActionButton,
+  defaultValueAdjust,
+  minMaxSlider,
+}

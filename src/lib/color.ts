@@ -272,6 +272,35 @@ export class RGBAImage {
     return imgData;
   }
 
+  // utility
+
+  calculateBrightness(r: number, g: number, b: number) {
+    //  Calculate brightness as the weighted sum of color channels
+    let brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+    return brightness;
+  }
+
+  clamp = (num: number, min: number, max: number) =>
+    Math.min(Math.max(num, min), max);
+
+  isWhite(r: number, g: number, b: number) {
+    const treshold = 200;
+    if (r >= treshold && g >= treshold && b >= treshold) {
+      return true;
+    }
+
+    return false;
+  }
+
+  isBlacks(r: number, g: number, b: number) {
+    const treshold = 60;
+    if (r <= treshold && g <= treshold && b <= treshold) {
+      return true;
+    }
+
+    return false;
+  }
+
   //image adjustment filter
   exposure(value: number) {
     const exposureFactor = 2 ** (value / 100);
@@ -318,13 +347,14 @@ export class RGBAImage {
   hightlight(value: number) {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
+      const maxFactor = 200;
 
-      let red = r + value / 5;
-      let green = g + value / 5;
-      let blue = b + value / 5;
-      r = Math.min(255, Math.max(0, red));
-      g = Math.min(255, Math.max(0, green));
-      b = Math.min(255, Math.max(0, blue));
+      const brightness = this.calculateBrightness(r, g, b);
+      if (brightness > maxFactor) {
+        r = this.clamp(r + value, 0, 255);
+        g = this.clamp(g + value, 0, 255);
+        b = this.clamp(b + value, 0, 255);
+      }
 
       data[idx] = r;
       ++idx;
@@ -338,17 +368,18 @@ export class RGBAImage {
   }
 
   shadow(value: number) {
-    const normalizedvalue = 2 ** (value / 100);
-
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
+      const maxFactor = 200;
 
-      const red = (r / 255) ** (1 / normalizedvalue) * 255;
-      const green = (g / 255) ** (1 / normalizedvalue) * 255;
-      const blue = (b / 255) ** (1 / normalizedvalue) * 255;
-      r = Math.min(255, Math.max(0, red));
-      g = Math.min(255, Math.max(0, green));
-      b = Math.min(255, Math.max(0, blue));
+      const brightness = this.calculateBrightness(r, g, b);
+      if (brightness < maxFactor) {
+        //const adjustedBrightness = brightness + value * (brightness - 255);
+        // const pixelNew = Math.max(adjustedBrightness, 255);
+        r = this.clamp(r - value, 0, 255);
+        g = this.clamp(g - value, 0, 255);
+        b = this.clamp(b - value, 0, 255);
+      }
 
       data[idx] = r;
       ++idx;
@@ -361,42 +392,41 @@ export class RGBAImage {
     return dst;
   }
 
-  white(val: number) {
-    val /= 10;
+  white(value: number) {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      const { r, g, b } = this.getPixel(x, y);
-      const hsv = rgbToHsv(r, g, b);
-      hsv.v = Math.min(1, Math.max(0, hsv.v + val / 100));
-      const newColor = hsvToRgb(hsv.h, hsv.s, hsv.v);
+      let { r, g, b } = this.getPixel(x, y);
+      let luminance = this.calculateBrightness(r, g, b);
 
-      data[idx] = newColor.r;
-      ++idx;
-      data[idx] = newColor.g;
-      ++idx;
-      data[idx] = newColor.b;
+      if (luminance > 200) {
+        if (this.isWhite(r, g, b)) {
+          r = this.clamp(luminance + value, 0, 255);
+          g = this.clamp(luminance + value, 0, 255);
+          b = this.clamp(luminance + value, 0, 255);
+        }
+      }
 
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
       return data;
     });
     return dst;
   }
 
-  black(val: number) {
-    val /= 2;
+  black(value: number) {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
 
-      // Calculate the luminance (brightness) of the pixel
-      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-
-      // Calculate the new luminance after adjusting the blacks
-      const newLuminance = Math.min(255, Math.max(0, luminance + val));
-
-      // Calculate the scaling factor to maintain the color ratio
-      const scalingFactor = newLuminance / luminance;
-
-      r = Math.min(255, r * scalingFactor);
-      g = Math.min(255, g * scalingFactor);
-      b = Math.min(255, b * scalingFactor);
+      let luminance = this.calculateBrightness(r, g, b);
+      if (luminance < 60) {
+        if (this.isBlacks(r, g, b)) {
+          r = this.clamp(luminance - value, 0, 255);
+          g = this.clamp(luminance - value, 0, 255);
+          b = this.clamp(luminance - value, 0, 255);
+        }
+      }
 
       data[idx] = r;
       ++idx;

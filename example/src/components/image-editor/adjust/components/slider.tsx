@@ -1,6 +1,7 @@
 import { Slider, ThemeProvider, createTheme, useTheme } from "@mui/material"
 import React from "react"
 import { AdjustProps, SliderProps } from "../types"
+import { minMaxSlider } from "@src/data/constant"
 
 export default function SliderComponent(props: SliderProps) {
   const theme = useTheme()
@@ -19,6 +20,9 @@ export default function SliderComponent(props: SliderProps) {
     if (!slider) return
 
     let percent = (Math.abs(slider) / 100) * 50
+    if (minMaxSlider.includes(name)) {
+      percent = percent * 2
+    }
     let formatData = `${Math.abs(50 - percent)}%`
     return formatData
   }
@@ -61,8 +65,8 @@ export default function SliderComponent(props: SliderProps) {
   return (
     <ThemeProvider theme={customTheme}>
       <Slider
-        min={-100}
-        max={100}
+        min={minMaxSlider.includes(name) ? -50 : -100}
+        max={minMaxSlider.includes(name) ? 50 : 100}
         step={1}
         aria-labelledby="negative-slider"
         name={name}

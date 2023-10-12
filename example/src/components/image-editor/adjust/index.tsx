@@ -38,7 +38,7 @@ export default function AdjustMain(props: AdjustMainProps) {
             .brightness(value.brightness)
             .hightlight(value.hightlight)
             .shadow(value.shadows)
-            .white(value.whites)
+            // .white(value.whites)
             .black(value.blacks)
             .temperature(value.temperature)
             .tint(value.tint)
@@ -47,6 +47,11 @@ export default function AdjustMain(props: AdjustMainProps) {
             .clarity(value.clarity)
             .sharpness(value.sharpness)
             .render(canvas)
+
+          // this is bug when white value give a change image
+          if (value.whites !== 0) {
+            I.white(value.whites).render(canvas)
+          }
         }
       }
     }
