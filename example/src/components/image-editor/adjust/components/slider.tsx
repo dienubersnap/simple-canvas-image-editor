@@ -20,7 +20,7 @@ export default function SliderComponent(props: SliderProps) {
     if (!slider) return
 
     let percent = (Math.abs(slider) / 100) * 50
-    if (minMaxSlider.includes(name)) {
+    if (minMaxSlider[name].min < 100) {
       percent = percent * 2
     }
     let formatData = `${Math.abs(50 - percent)}%`
@@ -65,8 +65,8 @@ export default function SliderComponent(props: SliderProps) {
   return (
     <ThemeProvider theme={customTheme}>
       <Slider
-        min={minMaxSlider.includes(name) ? -50 : -100}
-        max={minMaxSlider.includes(name) ? 50 : 100}
+        min={minMaxSlider[name].min}
+        max={minMaxSlider[name].max}
         step={1}
         aria-labelledby="negative-slider"
         name={name}

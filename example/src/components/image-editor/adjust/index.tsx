@@ -45,6 +45,11 @@ export default function AdjustMain(props: AdjustMainProps) {
             .saturationRGB(value.saturation)
             .contrast(value.contrast)
             .clarity(value.clarity)
+            .clip(value.clip)
+            .noise(value.noise)
+            .gamma(value.gamma)
+            .hue(value.hue)
+            .sepia(value.sepia)
             .sharpness(value.sharpness)
             .render(canvas)
 

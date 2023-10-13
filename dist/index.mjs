@@ -356,6 +356,7 @@ var Color = class _Color {
 };
 var RGBAImage = class _RGBAImage {
   constructor(w, h, data) {
+    this.clamp = (num, min, max) => Math.min(Math.max(num, min), max);
     this.type = "RGBAImage";
     this.w = w;
     this.h = h;
@@ -531,6 +532,25 @@ var RGBAImage = class _RGBAImage {
     imgData.data.set(this.data);
     return imgData;
   }
+  // utility
+  calculateBrightness(r, g, b) {
+    let brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+    return brightness;
+  }
+  isWhite(r, g, b) {
+    const treshold = 200;
+    if (r >= treshold && g >= treshold && b >= treshold) {
+      return true;
+    }
+    return false;
+  }
+  isBlacks(r, g, b) {
+    const treshold = 60;
+    if (r <= treshold && g <= treshold && b <= treshold) {
+      return true;
+    }
+    return false;
+  }
   //image adjustment filter
   exposure(value) {
     const exposureFactor = 2 ** (value / 100);
@@ -567,12 +587,13 @@ var RGBAImage = class _RGBAImage {
   hightlight(value) {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
-      let red = r + value / 5;
-      let green = g + value / 5;
-      let blue = b + value / 5;
-      r = Math.min(255, Math.max(0, red));
-      g = Math.min(255, Math.max(0, green));
-      b = Math.min(255, Math.max(0, blue));
+      const maxFactor = 200;
+      const brightness = this.calculateBrightness(r, g, b);
+      if (brightness > maxFactor) {
+        r = this.clamp(r + value, 0, 255);
+        g = this.clamp(g + value, 0, 255);
+        b = this.clamp(b + value, 0, 255);
+      }
       data[idx] = r;
       ++idx;
       data[idx] = g;
@@ -583,15 +604,15 @@ var RGBAImage = class _RGBAImage {
     return dst;
   }
   shadow(value) {
-    const normalizedvalue = 2 ** (value / 100);
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
-      const red = (r / 255) ** (1 / normalizedvalue) * 255;
-      const green = (g / 255) ** (1 / normalizedvalue) * 255;
-      const blue = (b / 255) ** (1 / normalizedvalue) * 255;
-      r = Math.min(255, Math.max(0, red));
-      g = Math.min(255, Math.max(0, green));
-      b = Math.min(255, Math.max(0, blue));
+      const maxFactor = 200;
+      const brightness = this.calculateBrightness(r, g, b);
+      if (brightness < maxFactor) {
+        r = this.clamp(r - value, 0, 255);
+        g = this.clamp(g - value, 0, 255);
+        b = this.clamp(b - value, 0, 255);
+      }
       data[idx] = r;
       ++idx;
       data[idx] = g;
@@ -601,32 +622,37 @@ var RGBAImage = class _RGBAImage {
     });
     return dst;
   }
-  white(val) {
-    val /= 10;
+  white(value) {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      const { r, g, b } = this.getPixel(x, y);
-      const hsv = rgbToHsv(r, g, b);
-      hsv.v = Math.min(1, Math.max(0, hsv.v + val / 100));
-      const newColor = hsvToRgb(hsv.h, hsv.s, hsv.v);
-      data[idx] = newColor.r;
+      let { r, g, b } = this.getPixel(x, y);
+      let luminance = this.calculateBrightness(r, g, b);
+      if (luminance > 200) {
+        if (this.isWhite(r, g, b)) {
+          r = this.clamp(luminance + value, 0, 255);
+          g = this.clamp(luminance + value, 0, 255);
+          b = this.clamp(luminance + value, 0, 255);
+        }
+      }
+      data[idx] = r;
       ++idx;
-      data[idx] = newColor.g;
+      data[idx] = g;
       ++idx;
-      data[idx] = newColor.b;
+      data[idx] = b;
       return data;
     });
     return dst;
   }
-  black(val) {
-    val /= 2;
+  black(value) {
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
-      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-      const newLuminance = Math.min(255, Math.max(0, luminance + val));
-      const scalingFactor = newLuminance / luminance;
-      r = Math.min(255, r * scalingFactor);
-      g = Math.min(255, g * scalingFactor);
-      b = Math.min(255, b * scalingFactor);
+      let luminance = this.calculateBrightness(r, g, b);
+      if (luminance < 60) {
+        if (this.isBlacks(r, g, b)) {
+          r = this.clamp(luminance - value, 0, 255);
+          g = this.clamp(luminance - value, 0, 255);
+          b = this.clamp(luminance - value, 0, 255);
+        }
+      }
       data[idx] = r;
       ++idx;
       data[idx] = g;
@@ -697,6 +723,7 @@ var RGBAImage = class _RGBAImage {
   }
   // Detail
   contrast(value) {
+    value /= 2;
     const contrastFactor = ((value + 100) / 100) ** 2;
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
       let { r, g, b } = this.getPixel(x, y);
@@ -706,6 +733,119 @@ var RGBAImage = class _RGBAImage {
       r = Math.min(255, Math.max(0, r * 255));
       g = Math.min(255, Math.max(0, g * 255));
       b = Math.min(255, Math.max(0, b * 255));
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+      return data;
+    });
+    return dst;
+  }
+  hue(value) {
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+      let hsv = rgbToHsv(r, g, b);
+      hsv.h *= 100;
+      hsv.h += value;
+      hsv.h = hsv.h % 100;
+      hsv.h /= 100;
+      let newData = hsvToRgb(hsv.h, hsv.s, hsv.v);
+      data[idx] = newData.r;
+      ++idx;
+      data[idx] = newData.g;
+      ++idx;
+      data[idx] = newData.b;
+      return data;
+    });
+    return dst;
+  }
+  gamma(value) {
+    value = Math.pow(2, value / 30.5);
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+      r = Math.pow(r / 255, value) * 255;
+      g = Math.pow(g / 255, value) * 255;
+      b = Math.pow(b / 255, value) * 255;
+      r = Math.min(255, Math.max(0, r));
+      g = Math.min(255, Math.max(0, g));
+      b = Math.min(255, Math.max(0, b));
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+      return data;
+    });
+    return dst;
+  }
+  //value between 0 - 100
+  sepia(value) {
+    const normalizedvalue = value / 100;
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+      r = Math.min(
+        255,
+        r * (1 - 0.607 * normalizedvalue) + g * (0.769 * normalizedvalue) + b * (0.189 * normalizedvalue)
+      );
+      g = Math.min(
+        255,
+        r * (0.349 * normalizedvalue) + g * (1 - 0.314 * normalizedvalue) + b * (0.168 * normalizedvalue)
+      );
+      b = Math.min(
+        255,
+        r * (0.272 * normalizedvalue) + g * (0.534 * normalizedvalue) + b * (1 - 0.869 * normalizedvalue)
+      );
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+      return data;
+    });
+    return dst;
+  }
+  //value 0 - 100
+  noise(value) {
+    const adjust = Math.abs(value) * 2.55;
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+      const rand = calculate_default.randomRange(adjust * -1, adjust);
+      r += rand;
+      g += rand;
+      b += rand;
+      r = Math.min(255, Math.max(0, r));
+      g = Math.min(255, Math.max(0, g));
+      b = Math.min(255, Math.max(0, b));
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+      return data;
+    });
+    return dst;
+  }
+  //value between 0 - 100
+  clip(value) {
+    const adjust = Math.abs(value) * 2.55;
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+      if (r > 255 - adjust) {
+        r = 255;
+      } else if (r < adjust) {
+        r = 0;
+      }
+      if (g > 255 - adjust) {
+        g = 255;
+      } else if (g < adjust) {
+        g = 0;
+      }
+      if (b > 255 - adjust) {
+        b = 255;
+      } else if (b < adjust) {
+        b = 0;
+      }
       data[idx] = r;
       ++idx;
       data[idx] = g;
@@ -825,16 +965,15 @@ var RGBAImage = class _RGBAImage {
 
 // src/core/canvasImageEdit.ts
 var CanvasImageEdit = class {
-  constructor(imageSrc) {
-    this.result = void 0;
-    this.image = new Image();
-    this.image.src = imageSrc;
-    this.image.setAttribute("crossOrigin", "anonymous");
+  constructor() {
   }
-  ImageLoader(cvs, maxEdge) {
+  ImageLoader(cvs, imageSrc, maxEdge) {
     const that = this;
-    this.image.onload = function() {
-      const inImg = RGBAImage.fromImage(that.image, cvs);
+    let image = new Image();
+    image.src = imageSrc;
+    image.setAttribute("crossOrigin", "anonymous");
+    image.onload = function() {
+      const inImg = RGBAImage.fromImage(image, cvs);
       that.result = inImg.resize_longedge(maxEdge || 640);
       that.result.render(cvs);
       const event = new Event("imageloaded");

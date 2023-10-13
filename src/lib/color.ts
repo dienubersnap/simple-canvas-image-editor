@@ -511,6 +511,7 @@ export class RGBAImage {
 
   // Detail
   contrast(value: number) {
+    value /= 2
     const contrastFactor = ((value + 100) / 100) ** 2;
 
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
@@ -536,6 +537,162 @@ export class RGBAImage {
     });
     return dst;
   }
+
+
+  hue(value: number) {
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      let hsv = rgbToHsv(r, g, b);
+      hsv.h *= 100;
+      hsv.h += value;
+      hsv.h = hsv.h % 100;
+      hsv.h /= 100;
+      let newData = hsvToRgb(hsv.h, hsv.s, hsv.v);
+
+      data[idx] = newData.r;
+      ++idx;
+      data[idx] = newData.g;
+      ++idx;
+      data[idx] = newData.b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  gamma(value: number) {
+    value = Math.pow(2, value / 30.5);
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      // Apply gamma adjustment to each color channel
+      r = Math.pow(r / 255, value) * 255;
+      g = Math.pow(g / 255, value) * 255;
+      b = Math.pow(b / 255, value) * 255;
+
+      // Ensure the color values stay within the 0-255 range
+      r = Math.min(255, Math.max(0, r));
+      g = Math.min(255, Math.max(0, g));
+      b = Math.min(255, Math.max(0, b));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  //value between 0 - 100
+  sepia(value: number) {
+    const normalizedvalue = value / 100;
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      // Apply sepia tone effect to the RGB values
+      r = Math.min(
+        255,
+        r * (1 - 0.607 * normalizedvalue) +
+          g * (0.769 * normalizedvalue) +
+          b * (0.189 * normalizedvalue),
+      );
+      g = Math.min(
+        255,
+        r * (0.349 * normalizedvalue) +
+          g * (1 - 0.314 * normalizedvalue) +
+          b * (0.168 * normalizedvalue),
+      );
+      b = Math.min(
+        255,
+        r * (0.272 * normalizedvalue) +
+          g * (0.534 * normalizedvalue) +
+          b * (1 - 0.869 * normalizedvalue),
+      );
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  //value 0 - 100
+  noise(value: number) {
+    const adjust = Math.abs(value) * 2.55;
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+
+      // Generate random noise within the specified range for each channel
+      const rand = Calculate.randomRange(adjust * -1, adjust);
+
+      // Apply noise to each color channel
+      r += rand;
+      g += rand;
+      b += rand;
+
+      // Ensure the color values stay within the 0-255 range
+      r = Math.min(255, Math.max(0, r));
+      g = Math.min(255, Math.max(0, g));
+      b = Math.min(255, Math.max(0, b));
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+
+  //value between 0 - 100
+  clip(value: number) {
+    const adjust = Math.abs(value) * 2.55;
+
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      let { r, g, b } = this.getPixel(x, y);
+      // Clip the color values based on the adjustment factor
+      if (r > 255 - adjust) {
+        r = 255;
+      } else if (r < adjust) {
+        r = 0;
+      }
+
+      if (g > 255 - adjust) {
+        g = 255;
+      } else if (g < adjust) {
+        g = 0;
+      }
+
+      if (b > 255 - adjust) {
+        b = 255;
+      } else if (b < adjust) {
+        b = 0;
+      }
+
+      data[idx] = r;
+      ++idx;
+      data[idx] = g;
+      ++idx;
+      data[idx] = b;
+
+      return data;
+    });
+    return dst;
+  }
+  
 
   clarity(value: number) {
     let clarityKernel: number[][];

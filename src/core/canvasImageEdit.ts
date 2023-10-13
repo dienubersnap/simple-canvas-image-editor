@@ -1,4 +1,5 @@
 import { RGBAImage } from '../lib/color.ts';
+
 class CanvasImageEdit {
   public result: RGBAImage | undefined;
 

@@ -533,6 +533,9 @@ var Color = /*#__PURE__*/ function() {
 var RGBAImage = /*#__PURE__*/ function() {
     function _RGBAImage(w, h, data) {
         _class_call_check(this, _RGBAImage);
+        this.clamp = function(num, min, max) {
+            return Math.min(Math.max(num, min), max);
+        };
         this.type = "RGBAImage";
         this.w = w;
         this.h = h;
@@ -726,6 +729,34 @@ var RGBAImage = /*#__PURE__*/ function() {
             }
         },
         {
+            // utility
+            key: "calculateBrightness",
+            value: function calculateBrightness(r, g, b) {
+                var brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+                return brightness;
+            }
+        },
+        {
+            key: "isWhite",
+            value: function isWhite(r, g, b) {
+                var treshold = 200;
+                if (r >= treshold && g >= treshold && b >= treshold) {
+                    return true;
+                }
+                return false;
+            }
+        },
+        {
+            key: "isBlacks",
+            value: function isBlacks(r, g, b) {
+                var treshold = 60;
+                if (r <= treshold && g <= treshold && b <= treshold) {
+                    return true;
+                }
+                return false;
+            }
+        },
+        {
             //image adjustment filter
             key: "exposure",
             value: function exposure(value) {
@@ -772,12 +803,13 @@ var RGBAImage = /*#__PURE__*/ function() {
                 var _this = this;
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
                     var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var red = r + value / 5;
-                    var green = g + value / 5;
-                    var blue = b + value / 5;
-                    r = Math.min(255, Math.max(0, red));
-                    g = Math.min(255, Math.max(0, green));
-                    b = Math.min(255, Math.max(0, blue));
+                    var maxFactor = 200;
+                    var brightness = _this.calculateBrightness(r, g, b);
+                    if (brightness > maxFactor) {
+                        r = _this.clamp(r + value, 0, 255);
+                        g = _this.clamp(g + value, 0, 255);
+                        b = _this.clamp(b + value, 0, 255);
+                    }
                     data[idx] = r;
                     ++idx;
                     data[idx] = g;
@@ -792,15 +824,15 @@ var RGBAImage = /*#__PURE__*/ function() {
             key: "shadow",
             value: function shadow(value) {
                 var _this = this;
-                var normalizedvalue = Math.pow(2, value / 100);
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
                     var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var red = Math.pow(r / 255, 1 / normalizedvalue) * 255;
-                    var green = Math.pow(g / 255, 1 / normalizedvalue) * 255;
-                    var blue = Math.pow(b / 255, 1 / normalizedvalue) * 255;
-                    r = Math.min(255, Math.max(0, red));
-                    g = Math.min(255, Math.max(0, green));
-                    b = Math.min(255, Math.max(0, blue));
+                    var maxFactor = 200;
+                    var brightness = _this.calculateBrightness(r, g, b);
+                    if (brightness < maxFactor) {
+                        r = _this.clamp(r - value, 0, 255);
+                        g = _this.clamp(g - value, 0, 255);
+                        b = _this.clamp(b - value, 0, 255);
+                    }
                     data[idx] = r;
                     ++idx;
                     data[idx] = g;
@@ -813,19 +845,23 @@ var RGBAImage = /*#__PURE__*/ function() {
         },
         {
             key: "white",
-            value: function white(val) {
+            value: function white(value) {
                 var _this = this;
-                val /= 10;
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
                     var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var hsv = rgbToHsv(r, g, b);
-                    hsv.v = Math.min(1, Math.max(0, hsv.v + val / 100));
-                    var newColor = hsvToRgb(hsv.h, hsv.s, hsv.v);
-                    data[idx] = newColor.r;
+                    var luminance = _this.calculateBrightness(r, g, b);
+                    if (luminance > 200) {
+                        if (_this.isWhite(r, g, b)) {
+                            r = _this.clamp(luminance + value, 0, 255);
+                            g = _this.clamp(luminance + value, 0, 255);
+                            b = _this.clamp(luminance + value, 0, 255);
+                        }
+                    }
+                    data[idx] = r;
                     ++idx;
-                    data[idx] = newColor.g;
+                    data[idx] = g;
                     ++idx;
-                    data[idx] = newColor.b;
+                    data[idx] = b;
                     return data;
                 });
                 return dst;
@@ -833,17 +869,18 @@ var RGBAImage = /*#__PURE__*/ function() {
         },
         {
             key: "black",
-            value: function black(val) {
+            value: function black(value) {
                 var _this = this;
-                val /= 2;
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
                     var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-                    var newLuminance = Math.min(255, Math.max(0, luminance + val));
-                    var scalingFactor = newLuminance / luminance;
-                    r = Math.min(255, r * scalingFactor);
-                    g = Math.min(255, g * scalingFactor);
-                    b = Math.min(255, b * scalingFactor);
+                    var luminance = _this.calculateBrightness(r, g, b);
+                    if (luminance < 60) {
+                        if (_this.isBlacks(r, g, b)) {
+                            r = _this.clamp(luminance - value, 0, 255);
+                            g = _this.clamp(luminance - value, 0, 255);
+                            b = _this.clamp(luminance - value, 0, 255);
+                        }
+                    }
                     data[idx] = r;
                     ++idx;
                     data[idx] = g;
@@ -927,6 +964,7 @@ var RGBAImage = /*#__PURE__*/ function() {
             key: "contrast",
             value: function contrast(value) {
                 var _this = this;
+                value /= 2;
                 var contrastFactor = Math.pow((value + 100) / 100, 2);
                 var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
                     var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
@@ -936,6 +974,130 @@ var RGBAImage = /*#__PURE__*/ function() {
                     r = Math.min(255, Math.max(0, r * 255));
                     g = Math.min(255, Math.max(0, g * 255));
                     b = Math.min(255, Math.max(0, b * 255));
+                    data[idx] = r;
+                    ++idx;
+                    data[idx] = g;
+                    ++idx;
+                    data[idx] = b;
+                    return data;
+                });
+                return dst;
+            }
+        },
+        {
+            key: "hue",
+            value: function hue(value) {
+                var _this = this;
+                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
+                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
+                    var hsv = rgbToHsv(r, g, b);
+                    hsv.h *= 100;
+                    hsv.h += value;
+                    hsv.h = hsv.h % 100;
+                    hsv.h /= 100;
+                    var newData = hsvToRgb(hsv.h, hsv.s, hsv.v);
+                    data[idx] = newData.r;
+                    ++idx;
+                    data[idx] = newData.g;
+                    ++idx;
+                    data[idx] = newData.b;
+                    return data;
+                });
+                return dst;
+            }
+        },
+        {
+            key: "gamma",
+            value: function gamma(value) {
+                var _this = this;
+                value = Math.pow(2, value / 30.5);
+                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
+                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
+                    r = Math.pow(r / 255, value) * 255;
+                    g = Math.pow(g / 255, value) * 255;
+                    b = Math.pow(b / 255, value) * 255;
+                    r = Math.min(255, Math.max(0, r));
+                    g = Math.min(255, Math.max(0, g));
+                    b = Math.min(255, Math.max(0, b));
+                    data[idx] = r;
+                    ++idx;
+                    data[idx] = g;
+                    ++idx;
+                    data[idx] = b;
+                    return data;
+                });
+                return dst;
+            }
+        },
+        {
+            //value between 0 - 100
+            key: "sepia",
+            value: function sepia(value) {
+                var _this = this;
+                var normalizedvalue = value / 100;
+                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
+                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
+                    r = Math.min(255, r * (1 - 0.607 * normalizedvalue) + g * (0.769 * normalizedvalue) + b * (0.189 * normalizedvalue));
+                    g = Math.min(255, r * (0.349 * normalizedvalue) + g * (1 - 0.314 * normalizedvalue) + b * (0.168 * normalizedvalue));
+                    b = Math.min(255, r * (0.272 * normalizedvalue) + g * (0.534 * normalizedvalue) + b * (1 - 0.869 * normalizedvalue));
+                    data[idx] = r;
+                    ++idx;
+                    data[idx] = g;
+                    ++idx;
+                    data[idx] = b;
+                    return data;
+                });
+                return dst;
+            }
+        },
+        {
+            //value 0 - 100
+            key: "noise",
+            value: function noise(value) {
+                var _this = this;
+                var adjust = Math.abs(value) * 2.55;
+                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
+                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
+                    var rand = calculate_default.randomRange(adjust * -1, adjust);
+                    r += rand;
+                    g += rand;
+                    b += rand;
+                    r = Math.min(255, Math.max(0, r));
+                    g = Math.min(255, Math.max(0, g));
+                    b = Math.min(255, Math.max(0, b));
+                    data[idx] = r;
+                    ++idx;
+                    data[idx] = g;
+                    ++idx;
+                    data[idx] = b;
+                    return data;
+                });
+                return dst;
+            }
+        },
+        {
+            //value between 0 - 100
+            key: "clip",
+            value: function clip(value) {
+                var _this = this;
+                var adjust = Math.abs(value) * 2.55;
+                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
+                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
+                    if (r > 255 - adjust) {
+                        r = 255;
+                    } else if (r < adjust) {
+                        r = 0;
+                    }
+                    if (g > 255 - adjust) {
+                        g = 255;
+                    } else if (g < adjust) {
+                        g = 0;
+                    }
+                    if (b > 255 - adjust) {
+                        b = 255;
+                    } else if (b < adjust) {
+                        b = 0;
+                    }
                     data[idx] = r;
                     ++idx;
                     data[idx] = g;
@@ -1178,20 +1340,19 @@ var RGBAImage = /*#__PURE__*/ function() {
 }();
 // src/core/canvasImageEdit.ts
 var CanvasImageEdit = /*#__PURE__*/ function() {
-    function CanvasImageEdit(imageSrc) {
+    function CanvasImageEdit() {
         _class_call_check(this, CanvasImageEdit);
-        this.result = void 0;
-        this.image = new Image();
-        this.image.src = imageSrc;
-        this.image.setAttribute("crossOrigin", "anonymous");
     }
     _create_class(CanvasImageEdit, [
         {
             key: "ImageLoader",
-            value: function ImageLoader(cvs, maxEdge) {
+            value: function ImageLoader(cvs, imageSrc, maxEdge) {
                 var that = this;
-                this.image.onload = function() {
-                    var inImg = RGBAImage.fromImage(that.image, cvs);
+                var image = new Image();
+                image.src = imageSrc;
+                image.setAttribute("crossOrigin", "anonymous");
+                image.onload = function() {
+                    var inImg = RGBAImage.fromImage(image, cvs);
                     that.result = inImg.resize_longedge(maxEdge || 640);
                     that.result.render(cvs);
                     var event = new Event("imageloaded");
