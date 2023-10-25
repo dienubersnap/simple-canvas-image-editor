@@ -587,9 +587,6 @@ var RGBAImage = class _RGBAImage {
       data[idx] = _dst.data[idx];
       return data;
     });
-    console.log(dst);
-    console.log("_dst", _dst.data);
-    console.log({ value });
     return dst;
   }
   hightlight(value) {
