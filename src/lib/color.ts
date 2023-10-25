@@ -3,6 +3,7 @@
 
 import Calculate from './calculate';
 import { hsvToRgb, rgbToHsv } from './convert';
+import cv, { Mat } from "opencv-ts";
 
 class Color {
   r: number;
@@ -54,14 +55,19 @@ export class RGBAImage {
   h: number;
 
   data: Uint8Array;
+  imageData: ImageData;
 
-  constructor(w: number, h: number, data?: Uint8Array) {
+  constructor(w: number, h: number, data?: Uint8Array, imageData? : ImageData) {
     this.type = 'RGBAImage';
     this.w = w;
     this.h = h;
+    this.imageData = new ImageData(w, h)
     this.data = new Uint8Array(w * h * 4);
     if (data) {
       this.data.set(data);
+    }
+    if (imageData) {
+      this.imageData = imageData
     }
   }
 
@@ -323,48 +329,58 @@ export class RGBAImage {
     return dst;
   }
 
-  brightness(value: number) {
-    const brightnessFactor = Math.floor((value / 100) * 255);
-
+  brightness(value: number, canvas: HTMLCanvasElement) {
+    let src = cv.matFromImageData(this.imageData)
+    let _dst:Mat = new cv.Mat()
+    let alpha = 1 + value / 200;
+    let beta = 0;
+    cv.convertScaleAbs(src, _dst, alpha, beta)
+    // const dst = new RGBAImage(_dst.cols, _dst.rows, _dst.data)
+    
     const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-
-      r = Math.min(255, Math.max(0, r + brightnessFactor));
-      g = Math.min(255, Math.max(0, g + brightnessFactor));
-      b = Math.min(255, Math.max(0, b + brightnessFactor));
-
-      data[idx] = r;
+      data[idx] = _dst.data[idx];
       ++idx;
-      data[idx] = g;
+      data[idx] = _dst.data[idx];
       ++idx;
-      data[idx] = b;
+      data[idx] = _dst.data[idx];
 
       return data;
-    });
-    return dst;
+    })
+    return dst
+    // cv.imshow(canvas, _dst)
   }
 
   hightlight(value: number) {
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-      const maxFactor = 200;
-
-      const brightness = this.calculateBrightness(r, g, b);
-      if (brightness > maxFactor) {
-        r = this.clamp(r + value, 0, 255);
-        g = this.clamp(g + value, 0, 255);
-        b = this.clamp(b + value, 0, 255);
+    value /= 100
+    let src = cv.matFromImageData(this.imageData)
+    let _dst: Mat = new cv.Mat();
+    cv.cvtColor(src, _dst, cv.COLOR_BGR2Lab);
+    console.log(_dst.data , "dst")
+    // Split the LAB image into L, A, and B channels
+    let channels = new cv.MatVector();
+    cv.split(_dst, channels);
+    let l = channels.get(0);
+    let a = channels.get(1)
+    let b = channels.get(2)
+    let newTest = cv.matFromArray(src.rows, src.cols, cv.CV_8UC1, [l,a, b] as unknown as number[])
+    console.log(newTest)
+    // Adjust the L channel (lightness) to change highlights
+    for (let i = 0; i < l.rows; i++) {
+      for (let j = 0; j < l.cols; j++) {
+        l.data[i * l.cols + j] = Math.min(255, Math.max(0, l.data[i * l.cols + j] * (1 + value)));
       }
+    }
+    
+    // Convert the LAB image back to BGR color space
+    let adjustedImage = new cv.Mat()
+    // Merge the LAB channels back to form the adjusted LAB image
+    cv.merge(channels, adjustedImage);
 
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
-    return dst;
+    let labToBgr = new cv.Mat()
+;
+    cv.cvtColor(adjustedImage, labToBgr, cv.COLOR_Lab2BGR);
+    const dst = new RGBAImage(this.w, this.h, labToBgr.data.slice())
+    return dst
   }
 
   shadow(value: number) {
@@ -511,30 +527,16 @@ export class RGBAImage {
 
   // Detail
   contrast(value: number) {
-    value /= 2
-    const contrastFactor = ((value + 100) / 100) ** 2;
-
-    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
-      let { r, g, b } = this.getPixel(x, y);
-
-      // Apply contrast adjustment to each color channel
-      r = (r / 255 - 0.5) * contrastFactor + 0.5;
-      g = (g / 255 - 0.5) * contrastFactor + 0.5;
-      b = (b / 255 - 0.5) * contrastFactor + 0.5;
-
-      // Ensure the color values stay within the 0-255 range
-      r = Math.min(255, Math.max(0, r * 255));
-      g = Math.min(255, Math.max(0, g * 255));
-      b = Math.min(255, Math.max(0, b * 255));
-
-      data[idx] = r;
-      ++idx;
-      data[idx] = g;
-      ++idx;
-      data[idx] = b;
-
-      return data;
-    });
+    let src = cv.matFromImageData(this.imageData)
+    let _dst: Mat = new cv.Mat();
+    let alpha = 1 + (value / 100) 
+    let beta = 128 - alpha * 128
+    
+    console.log(alpha, beta, "value")
+    cv.convertScaleAbs(src, _dst, alpha, beta)
+    const dst = new RGBAImage(this.w, this.h, _dst.data.slice())
+    // src.delete()
+    // _dst.delete()
     return dst;
   }
 
@@ -785,7 +787,6 @@ export class RGBAImage {
     cvs.height = this.h;
     const context = cvs.getContext('2d', {
       willReadFrequently: true,
-      alpha: false,
     });
     if (context) {
       context.putImageData(this.toImageData(context), 0, 0);
@@ -811,7 +812,7 @@ export class RGBAImage {
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, w, h);
       const uint8Array = new Uint8Array(imgData.data);
-      const newImage = new RGBAImage(w, h, uint8Array);
+      const newImage = new RGBAImage(w, h, uint8Array, imgData);
       return newImage;
     }
     // eslint-disable-next-line no-console

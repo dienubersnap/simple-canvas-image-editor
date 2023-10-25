@@ -30,7 +30,7 @@ const minMaxSlider: { [key: string]: { min: number; max: number } } = {
   temperature: { min: -100, max: 100 },
   saturation: { min: -100, max: 100 },
   tint: { min: -100, max: 100 },
-  contrast: { min: -100, max: 100 },
+  contrast: { min: -20, max: 20 },
   clarity: { min: 0, max: 100 },
   sharpness: { min: 0, max: 100 },
   clip: { min: 0, max: 100 },
