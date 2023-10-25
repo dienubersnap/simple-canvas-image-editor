@@ -579,7 +579,17 @@ var RGBAImage = class _RGBAImage {
     let alpha = 1 + value / 200;
     let beta = 0;
     cv.convertScaleAbs(src, _dst, alpha, beta);
-    const dst = new _RGBAImage(_dst.cols, _dst.rows, _dst.data.slice());
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      data[idx] = _dst.data[idx];
+      ++idx;
+      data[idx] = _dst.data[idx];
+      ++idx;
+      data[idx] = _dst.data[idx];
+      return data;
+    });
+    console.log(dst);
+    console.log("_dst", _dst.data);
+    console.log({ value });
     return dst;
   }
   hightlight(value) {

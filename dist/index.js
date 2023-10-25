@@ -802,7 +802,19 @@ var RGBAImage = /*#__PURE__*/ function() {
                 var alpha = 1 + value / 200;
                 var beta = 0;
                 import_opencv_ts.default.convertScaleAbs(src, _dst, alpha, beta);
-                var dst = new _RGBAImage(_dst.cols, _dst.rows, _dst.data.slice());
+                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
+                    data[idx] = _dst.data[idx];
+                    ++idx;
+                    data[idx] = _dst.data[idx];
+                    ++idx;
+                    data[idx] = _dst.data[idx];
+                    return data;
+                });
+                console.log(dst);
+                console.log("_dst", _dst.data);
+                console.log({
+                    value: value
+                });
                 return dst;
             }
         },

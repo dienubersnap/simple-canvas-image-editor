@@ -19,11 +19,8 @@ export default function SliderComponent(props: SliderProps) {
   const setWidthLinearGradien = () => {
     if (!slider) return
 
-    let percent = (Math.abs(slider) / 100) * 50
-    if (minMaxSlider[name].min < 100) {
-      percent = percent * 2
-    }
-    let formatData = `${Math.abs(50 - percent)}%`
+    const percent = (Math.abs(slider) / minMaxSlider[name].max) * 50
+    const formatData = `${Math.abs(50 - percent)}%`
     return formatData
   }
 

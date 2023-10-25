@@ -335,7 +335,17 @@ export class RGBAImage {
     let alpha = 1 + value / 200;
     let beta = 0;
     cv.convertScaleAbs(src, _dst, alpha, beta)
-    const dst = new RGBAImage(_dst.cols, _dst.rows, _dst.data.slice())
+    // const dst = new RGBAImage(_dst.cols, _dst.rows, _dst.data)
+    
+    const dst = this.formatUint8Array((data, idx, _, __, x, y) => {
+      data[idx] = _dst.data[idx];
+      ++idx;
+      data[idx] = _dst.data[idx];
+      ++idx;
+      data[idx] = _dst.data[idx];
+
+      return data;
+    })
     return dst
     // cv.imshow(canvas, _dst)
   }
