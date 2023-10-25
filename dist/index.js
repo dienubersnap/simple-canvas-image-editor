@@ -25,9 +25,11 @@ function _instanceof(left, right) {
         return left instanceof right;
     }
 }
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = function(target, all) {
     for(var name in all)__defProp(target, name, {
@@ -65,6 +67,16 @@ var __copyProps = function(to, from, except, desc) {
         }
     }
     return to;
+};
+var __toESM = function(mod, isNodeMode, target) {
+    return target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(// If the importer is in node compatibility mode or this is not an ESM
+    // file that has been converted to a CommonJS file using a Babel-
+    // compatible transform (i.e. "__esModule" has not been set), then set
+    // "default" to the CommonJS "module.exports" for node compatibility.
+    isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", {
+        value: mod,
+        enumerable: true
+    }) : target, mod);
 };
 var __toCommonJS = function(mod) {
     return __copyProps(__defProp({}, "__esModule", {
@@ -497,6 +509,7 @@ function hsvToRgb(h, s, v) {
     };
 }
 // src/lib/color.ts
+var import_opencv_ts = __toESM(require("opencv-ts"));
 var Color = /*#__PURE__*/ function() {
     function _Color(r, g, b, a) {
         _class_call_check(this, _Color);
@@ -531,7 +544,7 @@ var Color = /*#__PURE__*/ function() {
     return _Color;
 }();
 var RGBAImage = /*#__PURE__*/ function() {
-    function _RGBAImage(w, h, data) {
+    function _RGBAImage(w, h, data, imageData) {
         _class_call_check(this, _RGBAImage);
         this.clamp = function(num, min, max) {
             return Math.min(Math.max(num, min), max);
@@ -539,9 +552,13 @@ var RGBAImage = /*#__PURE__*/ function() {
         this.type = "RGBAImage";
         this.w = w;
         this.h = h;
+        this.imageData = new ImageData(w, h);
         this.data = new Uint8Array(w * h * 4);
         if (data) {
             this.data.set(data);
+        }
+        if (imageData) {
+            this.imageData = imageData;
         }
     }
     _create_class(_RGBAImage, [
@@ -779,44 +796,45 @@ var RGBAImage = /*#__PURE__*/ function() {
         },
         {
             key: "brightness",
-            value: function brightness(value) {
-                var _this = this;
-                var brightnessFactor = Math.floor(value / 100 * 255);
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    r = Math.min(255, Math.max(0, r + brightnessFactor));
-                    g = Math.min(255, Math.max(0, g + brightnessFactor));
-                    b = Math.min(255, Math.max(0, b + brightnessFactor));
-                    data[idx] = r;
-                    ++idx;
-                    data[idx] = g;
-                    ++idx;
-                    data[idx] = b;
-                    return data;
-                });
+            value: function brightness(value, canvas) {
+                var src = import_opencv_ts.default.matFromImageData(this.imageData);
+                var _dst = new import_opencv_ts.default.Mat();
+                var alpha = 1 + value / 200;
+                var beta = 0;
+                import_opencv_ts.default.convertScaleAbs(src, _dst, alpha, beta);
+                var dst = new _RGBAImage(_dst.cols, _dst.rows, _dst.data.slice());
                 return dst;
             }
         },
         {
             key: "hightlight",
             value: function hightlight(value) {
-                var _this = this;
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    var maxFactor = 200;
-                    var brightness = _this.calculateBrightness(r, g, b);
-                    if (brightness > maxFactor) {
-                        r = _this.clamp(r + value, 0, 255);
-                        g = _this.clamp(g + value, 0, 255);
-                        b = _this.clamp(b + value, 0, 255);
+                value /= 100;
+                var src = import_opencv_ts.default.matFromImageData(this.imageData);
+                var _dst = new import_opencv_ts.default.Mat();
+                import_opencv_ts.default.cvtColor(src, _dst, import_opencv_ts.default.COLOR_BGR2Lab);
+                console.log(_dst.data, "dst");
+                var channels = new import_opencv_ts.default.MatVector();
+                import_opencv_ts.default.split(_dst, channels);
+                var l = channels.get(0);
+                var a = channels.get(1);
+                var b = channels.get(2);
+                var newTest = import_opencv_ts.default.matFromArray(src.rows, src.cols, import_opencv_ts.default.CV_8UC1, [
+                    l,
+                    a,
+                    b
+                ]);
+                console.log(newTest);
+                for(var i = 0; i < l.rows; i++){
+                    for(var j = 0; j < l.cols; j++){
+                        l.data[i * l.cols + j] = Math.min(255, Math.max(0, l.data[i * l.cols + j] * (1 + value)));
                     }
-                    data[idx] = r;
-                    ++idx;
-                    data[idx] = g;
-                    ++idx;
-                    data[idx] = b;
-                    return data;
-                });
+                }
+                var adjustedImage = new import_opencv_ts.default.Mat();
+                import_opencv_ts.default.merge(channels, adjustedImage);
+                var labToBgr = new import_opencv_ts.default.Mat();
+                import_opencv_ts.default.cvtColor(adjustedImage, labToBgr, import_opencv_ts.default.COLOR_Lab2BGR);
+                var dst = new _RGBAImage(this.w, this.h, labToBgr.data.slice());
                 return dst;
             }
         },
@@ -963,24 +981,13 @@ var RGBAImage = /*#__PURE__*/ function() {
             // Detail
             key: "contrast",
             value: function contrast(value) {
-                var _this = this;
-                value /= 2;
-                var contrastFactor = Math.pow((value + 100) / 100, 2);
-                var dst = this.formatUint8Array(function(data, idx, _, __, x, y) {
-                    var _this_getPixel = _this.getPixel(x, y), r = _this_getPixel.r, g = _this_getPixel.g, b = _this_getPixel.b;
-                    r = (r / 255 - 0.5) * contrastFactor + 0.5;
-                    g = (g / 255 - 0.5) * contrastFactor + 0.5;
-                    b = (b / 255 - 0.5) * contrastFactor + 0.5;
-                    r = Math.min(255, Math.max(0, r * 255));
-                    g = Math.min(255, Math.max(0, g * 255));
-                    b = Math.min(255, Math.max(0, b * 255));
-                    data[idx] = r;
-                    ++idx;
-                    data[idx] = g;
-                    ++idx;
-                    data[idx] = b;
-                    return data;
-                });
+                var src = import_opencv_ts.default.matFromImageData(this.imageData);
+                var _dst = new import_opencv_ts.default.Mat();
+                var alpha = 1 + value / 100;
+                var beta = 128 - alpha * 128;
+                console.log(alpha, beta, "value");
+                import_opencv_ts.default.convertScaleAbs(src, _dst, alpha, beta);
+                var dst = new _RGBAImage(this.w, this.h, _dst.data.slice());
                 return dst;
             }
         },
@@ -1302,8 +1309,7 @@ var RGBAImage = /*#__PURE__*/ function() {
                 cvs.width = this.w;
                 cvs.height = this.h;
                 var context = cvs.getContext("2d", {
-                    willReadFrequently: true,
-                    alpha: false
+                    willReadFrequently: true
                 });
                 if (context) {
                     context.putImageData(this.toImageData(context), 0, 0);
@@ -1328,7 +1334,7 @@ var RGBAImage = /*#__PURE__*/ function() {
                     ctx.drawImage(img, 0, 0);
                     var imgData = ctx.getImageData(0, 0, w, h);
                     var uint8Array = new Uint8Array(imgData.data);
-                    var newImage = new _RGBAImage(w, h, uint8Array);
+                    var newImage = new _RGBAImage(w, h, uint8Array, imgData);
                     return newImage;
                 }
                 console.error("Canvas 2D context not available.");

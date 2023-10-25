@@ -13,7 +13,8 @@ declare class RGBAImage {
     w: number;
     h: number;
     data: Uint8Array;
-    constructor(w: number, h: number, data?: Uint8Array);
+    imageData: ImageData;
+    constructor(w: number, h: number, data?: Uint8Array, imageData?: ImageData);
     getPixel(x: number, y: number): Color;
     sample(x: number, y: number): Color;
     setPixel(x: number, y: number, c: Color): void;
@@ -29,7 +30,7 @@ declare class RGBAImage {
     isWhite(r: number, g: number, b: number): boolean;
     isBlacks(r: number, g: number, b: number): boolean;
     exposure(value: number): RGBAImage;
-    brightness(value: number): RGBAImage;
+    brightness(value: number, canvas: HTMLCanvasElement): RGBAImage;
     hightlight(value: number): RGBAImage;
     shadow(value: number): RGBAImage;
     white(value: number): RGBAImage;
