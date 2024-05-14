@@ -1,7 +1,7 @@
 {
   "name": "simple-canvas-image-editor",
-  "version": "1.0.15",
-  "description": "",
+  "version": "1.0.16",
+  "description": "canvas image editor sdk for ubersnap",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
